@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WayMark — Building Signage Passport</title>
+<title>WayMarks — Building Signage Passport</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1577,9 +1577,9 @@ async function uploadFloorPlan(file) {
   toast('Uploading floor plan...', 'success');
   const ext = file.name.split('.').pop();
   const path = `plans/${currentBuilding.id}/${currentFloor.id}/plan.${ext}`;
-  const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, file, { upsert: true });
+  const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, file, { upsert: true });
   if (upErr) { toast('Upload failed: ' + upErr.message, 'error'); return; }
-  const { data: urlData } = sb.storage.from('waymark-assets').getPublicUrl(path);
+  const { data: urlData } = sb.storage.from('waymarks-assets').getPublicUrl(path);
   const { error: dbErr } = await sb.from('floors').update({ floor_plan_url: urlData.publicUrl }).eq('id', currentFloor.id);
   if (dbErr) { toast('Database error: ' + dbErr.message, 'error'); return; }
   currentFloor.floor_plan_url = urlData.publicUrl;
@@ -1786,9 +1786,9 @@ async function saveAsset() {
     if (pendingAssetFile) {
       const ext = pendingAssetFile.name.split('.').pop();
       const path = `assets/${currentBuilding.id}/${currentFloor.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, pendingAssetFile, { upsert: true });
+      const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, pendingAssetFile, { upsert: true });
       if (upErr) throw upErr;
-      const { data: ud } = sb.storage.from('waymark-assets').getPublicUrl(path);
+      const { data: ud } = sb.storage.from('waymarks-assets').getPublicUrl(path);
       photoUrl = ud.publicUrl;
     }
 
@@ -2498,9 +2498,9 @@ async function saveAuditAsset() {
     if (auditNewAssetFile) {
       const ext = auditNewAssetFile.name.split('.').pop();
       const path = 'assets/' + currentBuilding.id + '/' + currentFloor.id + '/' + Date.now() + '.' + ext;
-      const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, auditNewAssetFile, {upsert:true});
+      const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, auditNewAssetFile, {upsert:true});
       if (upErr) throw upErr;
-      const { data: ud } = sb.storage.from('waymark-assets').getPublicUrl(path);
+      const { data: ud } = sb.storage.from('waymarks-assets').getPublicUrl(path);
       photoUrl = ud.publicUrl;
     }
     const today = new Date().toISOString().split('T')[0];
