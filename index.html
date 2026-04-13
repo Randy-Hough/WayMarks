@@ -858,20 +858,20 @@ input[type=file] { display:none; }
       <button class="modal-close" onclick="closeModal('asset-modal')">✕</button>
     </div>
     <div class="modal-body">
-      <div id="am-photo-preview" style="width:100%;min-height:80px;border-radius:4px;background:var(--mist);display:flex;align-items:center;justify-content:center;margin-bottom:14px;overflow:hidden;">
-        <span style="color:var(--mid);font-size:12px;font-family:'DM Mono',monospace">No photo yet</span>
+      <!-- MULTI-PHOTO GRID -->
+      <div class="photo-grid" id="am-photo-grid" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="photo-add-btn" style="flex:1;aspect-ratio:unset;padding:10px;border-radius:4px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;"
+          onclick="document.getElementById('asset-file-input').click()">
+          📷 <span style="font-size:12px">Add Photo</span>
+        </button>
+        <button class="photo-add-btn" style="flex:1;aspect-ratio:unset;padding:10px;border-radius:4px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;"
+          onclick="document.getElementById('asset-camera-input').click()">
+          📱 <span style="font-size:12px">Take Photo</span>
+        </button>
       </div>
-      <div class="upload-zone" id="am-upload-zone"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="handleAssetDrop(event)">
-        <div class="upload-icon">📷</div>
-        <div class="upload-text">Drag photo here or <strong onclick="document.getElementById('asset-file-input').click()">browse</strong></div>
-        <input type="file" id="asset-file-input" accept="image/*" onchange="handleAssetFile(this)">
-      <div id="am-change-photo" style="display:none;text-align:right;margin-bottom:8px">
-        <span onclick="document.getElementById('asset-file-input').click()" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--gold);cursor:pointer;text-decoration:underline">Change photo</span>
-      </div>
-      </div>
+      <input type="file" id="asset-file-input" accept="image/*" multiple onchange="handleAssetFiles(this)" style="display:none">
+      <input type="file" id="asset-camera-input" accept="image/*" capture="environment" onchange="handleAssetFiles(this)" style="display:none">
       <div class="form-row" style="margin-bottom:12px">
         <div class="fg" style="margin:0"><label>Location Name</label><input type="text" id="am-name" placeholder="e.g. Suite 1204 Nameplate"></div>
         <div class="fg" style="margin:0"><label>Asset Type</label>
@@ -1417,6 +1417,8 @@ function startPlacing() {
 
 function cancelPlacing() {
   placing = false;
+  movingAsset = null;
+  document.getElementById('place-hint').textContent = 'Click anywhere on the floor plan to place a new asset pin';
   document.getElementById('plan-canvas').style.cursor = '';
   document.getElementById('plan-img').style.cursor = '';
   document.getElementById('plan-wrap').style.cursor = '';
@@ -1445,7 +1447,21 @@ function handlePlanClick(e) {
   if (isAdminUser()) document.getElementById('add-asset-btn').style.display = 'block';
   document.getElementById('cancel-place-btn').style.display = 'none';
 
-  if (window._assigningToAsset) {
+  if (movingAsset) {
+    // Moving an existing pin to new location
+    const asset = movingAsset;
+    movingAsset = null;
+    document.getElementById('place-hint').textContent = 'Click anywhere on the floor plan to place a new asset pin';
+    sb.from('locations').update({ position_x: pinX, position_y: pinY })
+      .eq('id', asset.locations.id)
+      .then(({ error }) => {
+        if (error) { toast('Failed to move pin: ' + error.message, 'error'); return; }
+        asset.locations.position_x = pinX;
+        asset.locations.position_y = pinY;
+        toast('Pin moved!', 'success');
+        loadAssets(currentFloor.id);
+      });
+  } else if (window._assigningToAsset) {
     const asset = window._assigningToAsset;
     window._assigningToAsset = null;
     sb.from('locations').update({ position_x: pinX, position_y: pinY })
@@ -1602,9 +1618,17 @@ function openAssetPanel(asset) {
   const isAdmin = isAdminUser();
   document.getElementById('panel-title').textContent = loc.name;
 
-  const photoHtml = asset.photo_url
-    ? `<div class="panel-photo" style="cursor:zoom-in" onclick="openLightbox('${asset.photo_url}')" title="Click to enlarge"><img src="${asset.photo_url}" alt="${loc.name}" style="width:100%;height:100%;object-fit:cover"></div>`
-    : `<div class="panel-photo" style="background:var(--mist);display:flex;align-items:center;justify-content:center;"><span style="color:var(--mid);font-size:12px;font-family:'DM Mono',monospace">No photo</span></div>`;
+  const photos = (asset.photo_urls && asset.photo_urls.length > 0)
+    ? asset.photo_urls
+    : (asset.photo_url ? [asset.photo_url] : []);
+  let photoHtml = '';
+  if (photos.length > 0) {
+    photoHtml = `<div style="display:grid;grid-template-columns:${photos.length > 1 ? '1fr 1fr' : '1fr'};gap:6px;margin-bottom:14px">` +
+      photos.map(url => `<img src="${url}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:4px;cursor:zoom-in" onclick="openLightbox('${url}')" alt="${loc.name}">`).join('') +
+      '</div>';
+  } else {
+    photoHtml = `<div class="panel-photo" style="background:var(--mist);display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><span style="color:var(--mid);font-size:12px;font-family:'DM Mono',monospace">No photo</span></div>`;
+  }
 
   const auditAge = asset.audit_date ? Math.floor((Date.now() - new Date(asset.audit_date)) / 86400000) : null;
   const auditStale = auditAge !== null && auditAge > 365;
@@ -1631,11 +1655,35 @@ function openAssetPanel(asset) {
     footer.appendChild(a);
   }
   if (isAdmin) {
-    const btn = document.createElement('button');
-    btn.className = 'btn-ghost'; btn.style.justifyContent = 'center';
-    btn.textContent = 'Edit Asset';
-    btn.onclick = () => openAssetModal(asset);
-    footer.appendChild(btn);
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-gold'; editBtn.style.justifyContent = 'center';
+    editBtn.textContent = 'Edit Asset';
+    editBtn.onclick = () => openAssetModal(asset);
+    footer.appendChild(editBtn);
+
+    const moveBtn = document.createElement('button');
+    moveBtn.className = 'btn-ghost'; moveBtn.style.justifyContent = 'center';
+    moveBtn.style.color = 'var(--gold)'; moveBtn.style.borderColor = 'var(--gold)';
+    moveBtn.textContent = '📍 Move Pin';
+    moveBtn.onclick = () => startMovePin(asset);
+    footer.appendChild(moveBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-ghost'; delBtn.style.justifyContent = 'center';
+    delBtn.style.color = 'var(--danger)'; delBtn.style.borderColor = 'var(--danger)';
+    delBtn.textContent = '🗑 Delete Asset';
+    delBtn.onclick = () => deleteAsset(asset.id, asset.locations.id);
+    footer.appendChild(delBtn);
+
+    // History log in panel body
+    loadAssetHistory(asset.id).then(entries => {
+      const panelBody = document.getElementById('panel-body');
+      if (!panelBody) return;
+      const histDiv = document.createElement('div');
+      histDiv.style.cssText = 'margin-top:16px;padding-top:16px;border-top:1px solid var(--mist)';
+      histDiv.innerHTML = '<div style="font-size:10px;font-family:DM Mono,monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--mid);margin-bottom:8px">History</div>' + renderHistoryLog(entries);
+      panelBody.appendChild(histDiv);
+    });
   }
 
   document.getElementById('asset-panel').classList.add('open');
@@ -1651,6 +1699,15 @@ function openAssetModal(asset = null) {
   editingLocationId = asset?.locations?.id || null;
   currentCondition = asset?.condition || 'good';
   pendingAssetFile = null;
+  pendingPhotoFiles = [];
+  // Load existing photos from photo_urls JSON array or legacy photo_url
+  existingPhotoUrls = [];
+  if (asset?.photo_urls && Array.isArray(asset.photo_urls) && asset.photo_urls.length > 0) {
+    existingPhotoUrls = [...asset.photo_urls];
+  } else if (asset?.photo_url) {
+    existingPhotoUrls = [asset.photo_url];
+  }
+  renderPhotoGrid(existingPhotoUrls, isAdminUser());
   // Show pin status
   const pinInd = document.getElementById('am-pin-indicator');
   const noPinInd = document.getElementById('am-no-pin-indicator');
@@ -1782,15 +1839,9 @@ async function saveAsset() {
     const date = document.getElementById('am-date').value;
     if (!name) { toast('Location name required', 'error'); return; }
 
-    let photoUrl = null;
-    if (pendingAssetFile) {
-      const ext = pendingAssetFile.name.split('.').pop();
-      const path = `assets/${currentBuilding.id}/${currentFloor.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await sb.storage.from('markview-assets').upload(path, pendingAssetFile, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: ud } = sb.storage.from('markview-assets').getPublicUrl(path);
-      photoUrl = ud.publicUrl;
-    }
+    // Upload all photos
+    const allPhotoUrls = await uploadAllPhotos(currentBuilding.id, currentFloor.id);
+    const photoUrl = allPhotoUrls[0] || null; // primary photo for backward compat
 
     if (!editingAssetId) {
       // New location + asset
@@ -1806,9 +1857,12 @@ async function saveAsset() {
         product_sku: sku||null, shopify_product_url: url||null,
         condition: currentCondition, audit_date: date,
         audited_by: user?.email, notes: notes||null, is_current: true,
-        ...collectNewAssetFields()
+        ...collectNewAssetFields(),
+        photo_urls: allPhotoUrls
       });
       if (assetErr) throw assetErr;
+      // Log history
+      if (assetErr === null) await logFlagChange(null, 'created', null, 'Asset created');
       toast('Asset added!', 'success');
     } else {
       // Update location
@@ -2293,6 +2347,146 @@ function updateToolbarVisibility() {
   const tbAudit = document.getElementById('tb-audit');
   if (tbAdd) tbAdd.style.display = isAdmin ? 'flex' : 'none';
   if (tbAudit) tbAudit.style.display = isAdmin ? 'flex' : 'none';
+}
+
+
+// ── MOVE PIN ──
+let movingAsset = null;
+
+function startMovePin(asset) {
+  movingAsset = asset;
+  closePanel();
+  // Enter placing mode visually
+  placing = true;
+  document.getElementById('plan-canvas').style.cursor = 'crosshair';
+  document.getElementById('plan-img').style.cursor = 'crosshair';
+  document.getElementById('plan-wrap').style.cursor = 'crosshair';
+  document.getElementById('place-hint').textContent = 'Click the new location for this pin';
+  document.getElementById('place-hint').classList.add('show');
+  document.getElementById('add-asset-btn').style.display = 'none';
+  document.getElementById('cancel-place-btn').style.display = 'block';
+  toast('Click the floor plan to move the pin', 'success');
+}
+
+
+// ── MULTI-PHOTO SYSTEM ──
+let pendingPhotoFiles = []; // new files to upload
+let existingPhotoUrls = []; // already-saved URLs
+
+function renderPhotoGrid(existingUrls, isAdmin) {
+  const grid = document.getElementById('am-photo-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  existingUrls.forEach((url, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'photo-thumb';
+    thumb.innerHTML = `<img src="${url}" alt="Photo ${i+1}" onclick="openLightbox('${url}')">`;
+    if (isAdmin) {
+      const del = document.createElement('button');
+      del.className = 'photo-thumb-del';
+      del.textContent = '✕';
+      del.title = 'Remove photo';
+      del.onclick = (e) => { e.stopPropagation(); removeExistingPhoto(i); };
+      thumb.appendChild(del);
+    }
+    grid.appendChild(thumb);
+  });
+  // Show pending new files
+  pendingPhotoFiles.forEach((file, i) => {
+    const url = URL.createObjectURL(file);
+    const thumb = document.createElement('div');
+    thumb.className = 'photo-thumb';
+    thumb.style.opacity = '0.7';
+    thumb.innerHTML = `<img src="${url}" alt="New photo"><div style="position:absolute;bottom:2px;left:2px;background:var(--gold);color:white;font-size:8px;padding:1px 4px;border-radius:2px;font-family:'DM Mono',monospace">NEW</div>`;
+    const del = document.createElement('button');
+    del.className = 'photo-thumb-del';
+    del.textContent = '✕';
+    del.onclick = (e) => { e.stopPropagation(); removePendingPhoto(i); };
+    thumb.appendChild(del);
+    grid.appendChild(thumb);
+  });
+}
+
+function handleAssetFiles(input) {
+  if (!input.files.length) return;
+  const maxPhotos = 5;
+  const total = existingPhotoUrls.length + pendingPhotoFiles.length;
+  Array.from(input.files).forEach(file => {
+    if (existingPhotoUrls.length + pendingPhotoFiles.length < maxPhotos) {
+      pendingPhotoFiles.push(file);
+    }
+  });
+  if (total >= maxPhotos) toast('Maximum 5 photos per asset', 'error');
+  renderPhotoGrid(existingPhotoUrls, true);
+  input.value = '';
+}
+
+function removeExistingPhoto(index) {
+  existingPhotoUrls.splice(index, 1);
+  renderPhotoGrid(existingPhotoUrls, true);
+}
+
+function removePendingPhoto(index) {
+  pendingPhotoFiles.splice(index, 1);
+  renderPhotoGrid(existingPhotoUrls, true);
+}
+
+async function uploadAllPhotos(buildingId, floorId) {
+  const urls = [...existingPhotoUrls];
+  for (const file of pendingPhotoFiles) {
+    const ext = file.name.split('.').pop();
+    const path = `assets/${buildingId}/${floorId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await sb.storage.from('markview-assets').upload(path, file, { upsert: true });
+    if (error) { toast('Photo upload failed: ' + error.message, 'error'); continue; }
+    const { data: ud } = sb.storage.from('markview-assets').getPublicUrl(path);
+    urls.push(ud.publicUrl);
+  }
+  return urls;
+}
+
+// ── DELETE ASSET ──
+async function deleteAsset(assetId, locationId) {
+  if (!confirm('Delete this asset and its location permanently? This cannot be undone.')) return;
+  try {
+    await sb.from('assets').delete().eq('location_id', locationId);
+    await sb.from('locations').delete().eq('id', locationId);
+    closePanel();
+    toast('Asset deleted', 'success');
+    await loadAssets(currentFloor.id);
+  } catch(err) {
+    toast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+// ── HISTORY LOG ──
+async function loadAssetHistory(assetId) {
+  const { data } = await sb.from('service_flag_history')
+    .select('*')
+    .eq('asset_id', assetId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  return data || [];
+}
+
+async function logFlagChange(assetId, action, severity, note) {
+  await sb.from('service_flag_history').insert({
+    asset_id: assetId,
+    action, severity, note,
+    performed_by: user?.id,
+    performed_by_name: user?.email
+  });
+}
+
+function renderHistoryLog(entries) {
+  if (!entries.length) return '<div style="font-size:12px;color:var(--mid);font-family:DM Mono,monospace;padding:8px 0">No history yet</div>';
+  return '<div class="history-log">' + entries.map(e => {
+    const cls = e.severity ? 'history-entry ' + e.severity : 'history-entry';
+    const date = new Date(e.created_at).toLocaleDateString('en-CA', {month:'short',day:'numeric',year:'numeric'});
+    return `<div class="${cls}">
+      <div class="history-meta">${date} · ${e.performed_by_name||'Unknown'} · ${e.action}</div>
+      <div class="history-text">${e.note||''}</div>
+    </div>`;
+  }).join('') + '</div>';
 }
 
 init();
