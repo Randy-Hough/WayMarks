@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WayMark — Building Signage Passport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+</script>
+<style>
+:root {
+  --ink:      #0f0e0c;
+  --paper:    #f5f3ee;
+  --warm:     #faf9f6;
+  --steel:    #2c3540;
+  --gold:     #b8965a;
+  --gold-lt:  #d4af78;
+  --mist:     #e8e4dc;
+  --mid:      #8a8278;
+  --success:  #4a7c59;
+  --warn:     #c17f24;
+  --danger:   #a33a2e;
+  --r:        4px;
+  --sh:       0 2px 12px rgba(15,14,12,0.08);
+  --sh-lg:    0 8px 32px rgba(15,14,12,0.16);
+}
+
+/* TYPE COLORS */
+--type-directory:    #3d6b8f;
+--type-tenant:       #6b4f8f;
+--type-egress:       #8f4f3d;
+--type-stairwell:    #4f7a5a;
+--type-service:      #7a6b3d;
+--type-other:        #5a5a6b;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; font-size: 14px; }
+
+/* ── AUTH ── */
+#auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--steel); background-image: radial-gradient(ellipse at 20% 50%, rgba(184,150,90,0.1) 0%, transparent 60%); }
+.auth-card { background:var(--warm); border-radius:8px; padding:48px; width:400px; box-shadow:var(--sh-lg); }
+.auth-logo { font-family:'EB Garamond',serif; font-size:32px; color:var(--steel); margin-bottom:6px; text-align:center; }
+.auth-logo span { color:var(--gold); }
+.auth-sub { text-align:center; color:var(--mid); font-size:11px; margin-bottom:36px; font-family:'DM Mono',monospace; letter-spacing:0.06em; text-transform:uppercase; }
+.auth-err { background:#fdf0ee; border:1px solid #e8c5c0; color:var(--danger); padding:10px 14px; border-radius:var(--r); font-size:13px; margin-top:12px; display:none; }
+
+/* ── FORMS ── */
+.fg { margin-bottom:16px; }
+label { display:block; font-size:11px; font-weight:500; letter-spacing:0.06em; text-transform:uppercase; color:var(--mid); margin-bottom:6px; font-family:'DM Mono',monospace; }
+input[type=email], input[type=password], input[type=text], input[type=date], input[type=url], input[type=number], select, textarea {
+  width:100%; padding:10px 14px; border:1px solid var(--mist); border-radius:var(--r);
+  font-family:'DM Sans',sans-serif; font-size:14px; background:white; color:var(--ink);
+  transition:border-color 0.15s; outline:none;
+}
+input:focus, select:focus, textarea:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(184,150,90,0.12); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+
+/* ── BUTTONS ── */
+.btn-primary { width:100%; padding:12px; background:var(--steel); color:var(--paper); border:none; border-radius:var(--r); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:background 0.15s; }
+.btn-primary:hover { background:var(--ink); }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-gold { background:var(--gold); color:white; border:none; border-radius:var(--r); padding:10px 20px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-gold:hover { background:var(--gold-lt); }
+.btn-gold:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-ghost { background:transparent; border:1px solid var(--mist); color:var(--steel); border-radius:var(--r); padding:9px 18px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-ghost:hover { border-color:var(--steel); background:var(--mist); }
+.btn-danger { background:var(--danger); color:white; border:none; border-radius:var(--r); padding:9px 18px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; }
+.btn-sm-ghost { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--paper); padding:6px 14px; border-radius:var(--r); cursor:pointer; font-size:12px; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.btn-sm-ghost:hover { background:rgba(255,255,255,0.08); }
+
+/* ── HEADER ── */
+header { background:var(--steel); color:var(--paper); display:flex; align-items:center; justify-content:space-between; padding:0 24px; height:54px; position:sticky; top:0; z-index:100; box-shadow:0 2px 16px rgba(0,0,0,0.2); }
+.logo { font-family:'EB Garamond',serif; font-size:22px; letter-spacing:0.02em; }
+.logo span { color:var(--gold); }
+.header-right { display:flex; align-items:center; gap:12px; }
+.user-badge { font-size:12px; color:var(--mist); font-family:'DM Mono',monospace; }
+.role-tag { background:var(--gold); color:var(--steel); font-size:10px; font-weight:500; padding:2px 8px; border-radius:2px; letter-spacing:0.08em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+
+/* ── ADMIN BAR ── */
+.admin-bar { background:var(--ink); color:var(--paper); padding:5px 24px; font-size:11px; font-family:'DM Mono',monospace; display:flex; align-items:center; gap:10px; letter-spacing:0.04em; }
+.admin-bar .dot { width:6px; height:6px; border-radius:50%; background:var(--gold); display:inline-block; flex-shrink:0; }
+
+/* ── LAYOUT ── */
+#app { display:none; }
+.app-layout { display:grid; grid-template-columns:240px 1fr; height:calc(100vh - 54px); overflow:hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar { background:var(--warm); border-right:1px solid var(--mist); display:flex; flex-direction:column; overflow:hidden; }
+.sidebar-top { padding:16px 12px; border-bottom:1px solid var(--mist); }
+.sidebar-label { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--mid); padding:0 4px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+.sidebar-label button { background:none; border:none; color:var(--gold); font-size:16px; cursor:pointer; line-height:1; padding:0 2px; }
+.sidebar-label button:hover { color:var(--gold-lt); }
+.sidebar-scroll { flex:1; overflow-y:auto; padding:12px; }
+
+.building-card { background:white; border:1px solid var(--mist); border-radius:var(--r); padding:12px 14px; cursor:pointer; transition:all 0.15s; margin-bottom:8px; }
+.building-card:hover { border-color:var(--gold); }
+.building-card.active { border-color:var(--gold); background:#fffdf8; box-shadow:0 0 0 1px var(--gold); }
+.building-name { font-family:'EB Garamond',serif; font-size:16px; color:var(--steel); margin-bottom:2px; }
+.building-meta { font-size:11px; color:var(--mid); font-family:'DM Mono',monospace; }
+
+/* ── FLOOR LIST ── */
+.floor-section { padding:12px; border-top:1px solid var(--mist); }
+.floor-list { display:flex; flex-direction:column; gap:3px; max-height:calc(100vh - 320px); overflow-y:auto; }
+.floor-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r); cursor:pointer; transition:all 0.12s; border:1px solid transparent; }
+.floor-item:hover { background:var(--mist); }
+.floor-item.active { background:var(--steel); color:var(--paper); }
+.floor-item.active .floor-asset-count { color:rgba(255,255,255,0.5); }
+.floor-label { font-family:'DM Mono',monospace; font-size:12px; flex:1; }
+.floor-plan-dot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+.floor-plan-dot.missing { background:var(--mist); border:1px solid var(--mid); }
+.floor-asset-count { font-size:10px; color:var(--mid); font-family:'DM Mono',monospace; }
+
+/* ── MAIN ── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── FLOOR HEADER ── */
+.floor-header { padding:16px 24px; border-bottom:1px solid var(--mist); display:flex; align-items:center; justify-content:space-between; background:var(--warm); flex-shrink:0; }
+.floor-title { font-family:'EB Garamond',serif; font-size:24px; color:var(--steel); }
+.floor-sub { font-size:11px; color:var(--mid); font-family:'DM Mono',monospace; margin-top:2px; }
+.floor-actions { display:flex; gap:8px; align-items:center; }
+
+/* ── VIEW TOGGLE ── */
+.view-toggle { display:flex; border:1px solid var(--mist); border-radius:var(--r); overflow:hidden; }
+.view-btn { padding:7px 14px; background:white; border:none; cursor:pointer; font-size:12px; color:var(--mid); font-family:'DM Mono',monospace; transition:all 0.12s; }
+.view-btn.active { background:var(--steel); color:var(--paper); }
+
+/* ── STAT BAR ── */
+.stat-bar { display:flex; gap:1px; background:var(--mist); border-bottom:1px solid var(--mist); flex-shrink:0; }
+.stat { flex:1; background:var(--warm); padding:10px 16px; }
+.stat-num { font-family:'EB Garamond',serif; font-size:24px; color:var(--steel); line-height:1; }
+.stat-lbl { font-size:10px; color:var(--mid); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+
+/* ── FLOOR PLAN VIEW ── */
+.floor-plan-view { flex:1; overflow:auto; position:relative; background:#f0ede6; }
+
+.no-plan-state { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:20px; padding:40px; }
+.no-plan-icon { font-size:56px; opacity:0.3; }
+.no-plan-title { font-family:'EB Garamond',serif; font-size:26px; color:var(--steel); }
+.no-plan-sub { font-size:13px; color:var(--mid); text-align:center; max-width:360px; line-height:1.6; }
+
+.plan-upload-zone { border:2px dashed var(--mist); border-radius:8px; padding:40px 60px; text-align:center; cursor:pointer; transition:all 0.15s; background:white; }
+.plan-upload-zone:hover, .plan-upload-zone.drag-over { border-color:var(--gold); background:rgba(184,150,90,0.04); }
+.plan-upload-icon { font-size:36px; margin-bottom:10px; opacity:0.4; }
+.plan-upload-text { font-size:13px; color:var(--mid); }
+.plan-upload-text strong { color:var(--steel); cursor:pointer; }
+.plan-upload-text strong:hover { color:var(--gold); }
+.plan-upload-hint { font-size:11px; color:var(--mid); margin-top:6px; font-family:'DM Mono',monospace; }
+
+/* ── FLOOR PLAN MAP ── */
+.plan-container { position:relative; display:inline-block; min-width:100%; }
+.plan-img { display:block; max-width:100%; height:auto; user-select:none; }
+.plan-img.placing { cursor:crosshair; }
+
+/* ── PINS ── */
+.pin { position:absolute; transform:translate(-50%, -100%); cursor:pointer; transition:transform 0.15s; z-index:10; }
+.pin:hover { transform:translate(-50%, -100%) scale(1.2); z-index:20; }
+.pin.selected { transform:translate(-50%, -100%) scale(1.3); z-index:30; }
+.pin-body { width:28px; height:28px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); border:2.5px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.25); display:flex; align-items:center; justify-content:center; }
+.pin-icon { transform:rotate(45deg); font-size:7px; line-height:1; }
+.pin-label { position:absolute; left:50%; transform:translateX(-50%); bottom:32px; background:rgba(44,53,64,0.92); color:white; font-size:10px; font-family:'DM Mono',monospace; padding:3px 8px; border-radius:2px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; backdrop-filter:blur(4px); }
+.pin:hover .pin-label { opacity:1; }
+
+/* Pin colors by type */
+.pin-directory .pin-body  { background:#3d6b8f; }
+.pin-tenant_id .pin-body  { background:#6b4f8f; }
+.pin-egress .pin-body     { background:#8f4f3d; }
+.pin-stairwell .pin-body  { background:#4f7a5a; }
+.pin-service_room .pin-body { background:#7a6b3d; }
+.pin-other .pin-body      { background:#5a5a6b; }
+
+/* Condition ring */
+.pin-body.cond-fair    { border-color:var(--warn); }
+.pin-body.cond-replace { border-color:var(--danger); animation:pulse 1.5s ease-in-out infinite; }
+.pin-body.cond-missing { border-color:var(--mid); opacity:0.6; }
+
+@keyframes pulse { 0%,100%{box-shadow:0 2px 8px rgba(0,0,0,0.25)} 50%{box-shadow:0 2px 16px rgba(163,58,46,0.5)} }
+
+/* ── PLACE HINT ── */
+.place-hint { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:var(--steel); color:var(--paper); padding:8px 18px; border-radius:20px; font-size:12px; font-family:'DM Mono',monospace; letter-spacing:0.04em; pointer-events:none; z-index:50; box-shadow:var(--sh-lg); display:none; }
+.place-hint.show { display:block; }
+
+/* ── GRID VIEW ── */
+.grid-view { flex:1; overflow-y:auto; padding:20px 24px; }
+.filter-bar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filter-chip { border:1px solid var(--mist); background:white; border-radius:20px; padding:5px 14px; font-size:11px; cursor:pointer; transition:all 0.12s; color:var(--mid); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:0.04em; }
+.filter-chip:hover { border-color:var(--steel); color:var(--steel); }
+.filter-chip.active { background:var(--steel); color:var(--paper); border-color:var(--steel); }
+.search-wrap { margin-left:auto; }
+.search-wrap input { padding:6px 14px; border:1px solid var(--mist); border-radius:20px; font-size:12px; width:200px; }
+.asset-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:16px; }
+.asset-card { background:white; border:1px solid var(--mist); border-radius:6px; overflow:hidden; transition:all 0.15s; cursor:pointer; box-shadow:var(--sh); }
+.asset-card:hover { border-color:var(--gold); box-shadow:var(--sh-lg); transform:translateY(-2px); }
+.asset-photo-wrap { position:relative; aspect-ratio:4/3; background:var(--mist); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.asset-photo-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+.asset-photo-wrap .no-photo { display:flex; flex-direction:column; align-items:center; gap:6px; color:var(--mid); }
+.type-badge { position:absolute; top:8px; left:8px; background:rgba(44,53,64,0.85); color:var(--paper); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border-radius:2px; font-family:'DM Mono',monospace; backdrop-filter:blur(4px); }
+.cond-dot { position:absolute; top:8px; right:8px; width:10px; height:10px; border-radius:50%; border:2px solid white; }
+.cond-dot.good    { background:var(--success); }
+.cond-dot.fair    { background:var(--warn); }
+.cond-dot.replace { background:var(--danger); }
+.cond-dot.missing { background:var(--mid); }
+.asset-info { padding:12px 14px; }
+.asset-name { font-family:'EB Garamond',serif; font-size:16px; color:var(--steel); margin-bottom:3px; line-height:1.2; }
+.asset-meta { font-size:11px; color:var(--mid); font-family:'DM Mono',monospace; margin-bottom:10px; }
+.asset-footer { display:flex; align-items:center; justify-content:space-between; }
+.sku-tag { font-family:'DM Mono',monospace; font-size:11px; color:var(--mid); background:var(--mist); padding:3px 8px; border-radius:2px; }
+.reorder-btn { background:var(--gold); color:white; border:none; border-radius:var(--r); padding:5px 12px; font-size:12px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; transition:background 0.12s; text-decoration:none; display:inline-block; white-space:nowrap; }
+.reorder-btn:hover { background:var(--gold-lt); }
+
+/* ── ASSET PANEL (slide-in) ── */
+.asset-panel { position:absolute; right:0; top:0; bottom:0; width:340px; background:var(--warm); border-left:1px solid var(--mist); box-shadow:-4px 0 20px rgba(0,0,0,0.1); z-index:40; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.25s ease; }
+.asset-panel.open { transform:translateX(0); }
+.panel-header { padding:16px 20px; border-bottom:1px solid var(--mist); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.panel-title { font-family:'EB Garamond',serif; font-size:20px; color:var(--steel); }
+.panel-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--mid); }
+.panel-close:hover { color:var(--ink); }
+.panel-body { flex:1; overflow-y:auto; padding:16px 20px; }
+.panel-photo { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:var(--r); background:var(--mist); display:flex; align-items:center; justify-content:center; margin-bottom:16px; overflow:hidden; }
+.panel-photo img { width:100%; height:100%; object-fit:cover; }
+.panel-field { margin-bottom:12px; }
+.panel-field-label { font-size:10px; font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:0.06em; color:var(--mid); margin-bottom:3px; }
+.panel-field-value { font-size:14px; color:var(--ink); }
+.panel-footer { padding:16px 20px; border-top:1px solid var(--mist); display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+
+/* ── UPLOAD ZONE (asset photo) ── */
+.upload-zone { border:2px dashed var(--mist); border-radius:var(--r); padding:24px; text-align:center; cursor:pointer; transition:all 0.15s; margin-bottom:12px; }
+.upload-zone:hover, .upload-zone.drag-over { border-color:var(--gold); background:rgba(184,150,90,0.04); }
+.upload-icon { font-size:28px; margin-bottom:6px; opacity:0.4; }
+.upload-text { font-size:12px; color:var(--mid); }
+.upload-text strong { color:var(--steel); cursor:pointer; }
+input[type=file] { display:none; }
+
+/* ── CONDITION ── */
+.condition-selector { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+.cond-opt { border:1px solid var(--mist); border-radius:var(--r); padding:7px 4px; text-align:center; cursor:pointer; font-size:10px; font-family:'DM Mono',monospace; transition:all 0.12s; text-transform:uppercase; letter-spacing:0.04em; }
+.cond-opt:hover { border-color:var(--steel); }
+.cond-opt.sel { background:var(--steel); color:var(--paper); border-color:var(--steel); }
+.cond-opt[data-v=good].sel    { background:var(--success); border-color:var(--success); }
+.cond-opt[data-v=fair].sel    { background:var(--warn); border-color:var(--warn); }
+.cond-opt[data-v=replace].sel { background:var(--danger); border-color:var(--danger); }
+
+/* ── MODAL ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(15,14,12,0.5); backdrop-filter:blur(4px); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal { background:var(--warm); border-radius:8px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; box-shadow:var(--sh-lg); transform:translateY(12px); transition:transform 0.2s; }
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-header { padding:22px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-family:'EB Garamond',serif; font-size:22px; color:var(--steel); }
+.modal-close { background:none; border:none; font-size:20px; cursor:pointer; color:var(--mid); }
+.modal-close:hover { color:var(--ink); }
+.modal-body { padding:18px 24px 24px; }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; padding-top:16px; border-top:1px solid var(--mist); margin-top:16px; }
+
+/* ── WELCOME ── */
+.welcome { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px; color:var(--mid); }
+.welcome-icon { font-size:56px; opacity:0.25; }
+.welcome-title { font-family:'EB Garamond',serif; font-size:26px; color:var(--steel); }
+.welcome-sub { font-size:13px; color:var(--mid); }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:24px; right:24px; background:var(--steel); color:var(--paper); padding:12px 20px; border-radius:var(--r); font-size:13px; box-shadow:var(--sh-lg); z-index:500; transform:translateY(80px); opacity:0; transition:all 0.25s; }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.success { border-left:3px solid var(--success); }
+.toast.error   { border-left:3px solid var(--danger); }
+
+/* ── SPINNER ── */
+.spinner { width:18px; height:18px; border:2px solid var(--mist); border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading { display:flex; align-items:center; justify-content:center; gap:10px; padding:40px; color:var(--mid); font-size:13px; }
+
+/* ── AUDIT ── */
+.audit-chip { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-family:'DM Mono',monospace; color:var(--mid); }
+.audit-chip.stale { color:var(--warn); }
+
+/* ── EMPTY ── */
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; gap:12px; text-align:center; }
+.empty-icon { font-size:44px; opacity:0.3; }
+.empty-title { font-family:'EB Garamond',serif; font-size:22px; color:var(--steel); }
+.empty-sub { font-size:13px; color:var(--mid); max-width:320px; line-height:1.6; }
+
+/* ── FLOOR MGMT ── */
+.floor-mgmt-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:300px; overflow-y:auto; margin-bottom:16px; }
+.floor-mgmt-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--mist); border-radius:var(--r); background:white; }
+.floor-mgmt-label { font-family:'DM Mono',monospace; font-size:12px; flex:1; }
+.floor-mgmt-del { background:none; border:none; color:var(--mid); cursor:pointer; font-size:14px; }
+.floor-mgmt-del:hover { color:var(--danger); }
+
+@media(max-width:768px) {
+  .app-layout { grid-template-columns:1fr; }
+  .sidebar { display:none; }
+  .asset-panel { width:100%; }
+}
+
+/* ── QUICK AUDIT MODE ── */
+#audit-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: var(--ink);
+  display: none; flex-direction: column;
+  font-family: 'DM Sans', sans-serif;
+}
+#audit-overlay.active { display: flex; }
+
+.audit-header {
+  background: var(--steel);
+  padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.audit-header-left { display: flex; align-items: center; gap: 12px; }
+.audit-badge {
+  background: var(--gold); color: white;
+  font-size: 10px; font-weight: 700; padding: 3px 10px;
+  border-radius: 2px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+.audit-floor-name { color: var(--paper); font-family: 'EB Garamond', serif; font-size: 20px; }
+.audit-progress-wrap { flex: 1; margin: 0 24px; }
+.audit-progress-bar {
+  height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden;
+}
+.audit-progress-fill {
+  height: 100%; background: var(--gold); border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.audit-progress-label { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace; margin-top: 4px; text-align: center; }
+.audit-end-btn {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  color: var(--paper); padding: 8px 18px; border-radius: var(--r);
+  font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+.audit-end-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ── AUDIT PLAN VIEW ── */
+.audit-plan-wrap {
+  flex: 1; overflow: auto; position: relative;
+  background: #1a1e24;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+}
+.audit-plan-container { position: relative; display: inline-block; min-width: 100%; }
+.audit-plan-img { display: block; max-width: 100%; height: auto; opacity: 0.9; }
+.audit-plan-img.audit-placing { cursor: crosshair; }
+
+.audit-place-hint {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--gold); color: white;
+  padding: 10px 22px; border-radius: 24px;
+  font-size: 13px; font-family: 'DM Mono', monospace;
+  letter-spacing: 0.04em; pointer-events: none;
+  box-shadow: 0 4px 20px rgba(184,150,90,0.4);
+  display: none;
+}
+.audit-place-hint.show { display: block; }
+
+/* ── AUDIT PINS ── */
+.audit-pin { position: absolute; transform: translate(-50%, -100%); cursor: pointer; z-index: 10; transition: transform 0.15s; }
+.audit-pin:hover { transform: translate(-50%, -100%) scale(1.15); z-index: 20; }
+.audit-pin-body {
+  width: 34px; height: 34px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg); border: 3px solid white;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.audit-pin-icon { transform: rotate(45deg); font-size: 14px; }
+.audit-pin.audited-today .audit-pin-body { border-color: var(--success) !important; box-shadow: 0 3px 12px rgba(74,124,89,0.5); }
+.audit-pin.not-audited .audit-pin-body { opacity: 0.5; border-color: var(--danger) !important; }
+.audit-pin-label {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 36px; background: rgba(0,0,0,0.85); color: white;
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  padding: 3px 8px; border-radius: 2px; white-space: nowrap;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+}
+.audit-pin:hover .audit-pin-label { opacity: 1; }
+
+/* ── AUDIT TOOLBAR ── */
+.audit-toolbar {
+  background: var(--steel); border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.audit-tool-btn {
+  padding: 10px 20px; border-radius: var(--r); border: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+}
+.audit-tool-btn.primary { background: var(--gold); color: white; }
+.audit-tool-btn.primary:hover { background: var(--gold-lt); }
+.audit-tool-btn.secondary { background: rgba(255,255,255,0.1); color: var(--paper); border: 1px solid rgba(255,255,255,0.15); }
+.audit-tool-btn.secondary:hover { background: rgba(255,255,255,0.18); }
+.audit-tool-btn.active-place { background: #3d6b8f; color: white; }
+
+.audit-legend { display: flex; gap: 16px; margin-left: auto; }
+.audit-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace; }
+.audit-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* ── QUICK CAPTURE SHEET (bottom sheet on mobile) ── */
+.capture-sheet {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 400;
+  background: var(--warm); border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.3);
+  transform: translateY(100%); transition: transform 0.3s ease;
+  max-height: 90vh; overflow-y: auto;
+}
+.capture-sheet.open { transform: translateY(0); }
+.capture-sheet-handle {
+  width: 40px; height: 4px; background: var(--mist);
+  border-radius: 2px; margin: 12px auto 0;
+}
+.capture-sheet-header {
+  padding: 16px 20px 12px; border-bottom: 1px solid var(--mist);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.capture-sheet-title { font-family: 'EB Garamond', serif; font-size: 20px; color: var(--steel); }
+.capture-sheet-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--mid); }
+.capture-sheet-body { padding: 16px 20px 32px; }
+
+/* Photo capture button — big and tapable */
+.photo-capture-btn {
+  width: 100%; aspect-ratio: 16/9; background: var(--steel);
+  border: none; border-radius: 8px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--paper); margin-bottom: 16px;
+  position: relative; overflow: hidden; transition: background 0.15s;
+}
+.photo-capture-btn:hover { background: var(--ink); }
+.photo-capture-btn .capture-icon { font-size: 40px; opacity: 0.7; }
+.photo-capture-btn .capture-label { font-size: 14px; font-weight: 500; }
+.photo-capture-btn .capture-hint { font-size: 11px; opacity: 0.5; font-family: 'DM Mono', monospace; }
+.photo-preview-thumb {
+  width: 100%; aspect-ratio: 16/9; border-radius: 8px;
+  object-fit: cover; display: block; margin-bottom: 16px; cursor: pointer;
+}
+
+/* Type chips — big tappable buttons */
+.type-chip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.type-chip {
+  padding: 12px 8px; border-radius: var(--r); border: 2px solid var(--mist);
+  background: white; cursor: pointer; text-align: center;
+  font-size: 11px; font-family: 'DM Mono', monospace; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--mid); transition: all 0.12s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.type-chip:hover { border-color: var(--steel); color: var(--steel); }
+.type-chip.sel { border-color: var(--steel); background: var(--steel); color: var(--paper); }
+.type-chip .tc-icon { font-size: 20px; }
+
+/* Condition chips */
+.cond-chip-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.cond-chip {
+  flex: 1; padding: 10px 6px; border-radius: var(--r); border: 2px solid var(--mist);
+  background: white; cursor: pointer; text-align: center;
+  font-size: 11px; font-family: 'DM Mono', monospace; text-transform: uppercase;
+  letter-spacing: 0.04em; transition: all 0.12s;
+}
+.cond-chip.sel-good    { background: var(--success); color: white; border-color: var(--success); }
+.cond-chip.sel-fair    { background: var(--warn);    color: white; border-color: var(--warn); }
+.cond-chip.sel-replace { background: var(--danger);  color: white; border-color: var(--danger); }
+.cond-chip.sel-missing { background: var(--mid);     color: white; border-color: var(--mid); }
+
+.audit-save-btn {
+  width: 100%; padding: 16px; background: var(--gold); color: white; border: none;
+  border-radius: var(--r); font-size: 16px; font-weight: 500; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: background 0.15s; margin-top: 4px;
+}
+.audit-save-btn:hover { background: var(--gold-lt); }
+.audit-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── END AUDIT SUMMARY ── */
+.audit-summary-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(15,14,12,0.7); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.audit-summary-overlay.show { display: flex; }
+.audit-summary-card {
+  background: var(--warm); border-radius: 12px; padding: 36px;
+  max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.audit-summary-title { font-family: 'EB Garamond', serif; font-size: 28px; color: var(--steel); margin-bottom: 6px; }
+.audit-summary-sub { font-size: 13px; color: var(--mid); margin-bottom: 24px; font-family: 'DM Mono', monospace; }
+.audit-summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.audit-sum-stat { background: white; border: 1px solid var(--mist); border-radius: var(--r); padding: 14px; text-align: center; }
+.audit-sum-num { font-family: 'EB Garamond', serif; font-size: 32px; line-height: 1; margin-bottom: 4px; }
+.audit-sum-lbl { font-size: 10px; color: var(--mid); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; }
+.missed-list { background: #fdf5ee; border: 1px solid #e8d5c0; border-radius: var(--r); padding: 14px; margin-bottom: 20px; display: none; }
+.missed-list.show { display: block; }
+.missed-list-title { font-size: 12px; font-weight: 500; color: var(--warn); margin-bottom: 8px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; }
+.missed-list-item { font-size: 13px; color: var(--ink); padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+.audit-summary-actions { display: flex; gap: 10px; }
+
+/* ── SERVICE FLAGS ── */
+.flag-dot {
+  position: absolute; top: -3px; right: -3px;
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1.5px solid white; z-index: 2;
+}
+.flag-dot.monitor  { background: #4a7c59; }
+.flag-dot.schedule { background: #c17f24; animation: none; }
+.flag-dot.urgent   { background: #a33a2e; animation: flagPulse 1.2s ease-in-out infinite; }
+@keyframes flagPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(163,58,46,0.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(163,58,46,0); }
+}
+.flag-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 3px;
+  font-size: 11px; font-family: 'DM Mono', monospace;
+  font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.flag-badge.monitor  { background: rgba(74,124,89,0.12);  color: #4a7c59; }
+.flag-badge.schedule { background: rgba(193,127,36,0.12); color: #c17f24; }
+.flag-badge.urgent   { background: rgba(163,58,46,0.12);  color: #a33a2e; }
+
+/* ── MAP TOOLBAR ── */
+.map-toolbar {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  z-index: 30; display: flex; flex-direction: column;
+  gap: 4px; background: var(--warm);
+  border: 1px solid var(--mist); border-radius: 6px;
+  padding: 6px; box-shadow: var(--sh-lg);
+}
+.toolbar-btn {
+  width: 36px; height: 36px; border-radius: 4px; border: none;
+  background: transparent; cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s; color: var(--mid); position: relative;
+}
+.toolbar-btn:hover { background: var(--mist); color: var(--steel); }
+.toolbar-btn.active { background: var(--steel); color: var(--paper); }
+.toolbar-btn.urgent-active { background: var(--danger); color: white; }
+.toolbar-divider { height: 1px; background: var(--mist); margin: 2px 0; }
+.toolbar-tooltip {
+  position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+  background: var(--steel); color: var(--paper);
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  padding: 4px 8px; border-radius: 3px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 100;
+}
+.toolbar-btn:hover .toolbar-tooltip { opacity: 1; }
+
+/* ── FILTER PANEL ── */
+.filter-panel {
+  position: absolute; left: 60px; top: 50%; transform: translateY(-50%);
+  z-index: 29; background: var(--warm); border: 1px solid var(--mist);
+  border-radius: 6px; padding: 14px; box-shadow: var(--sh-lg);
+  width: 210px; display: none;
+}
+.filter-panel.open { display: block; }
+.filter-panel-title {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--mid); margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--mist);
+}
+.filter-check {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; cursor: pointer; font-size: 12px; color: var(--steel);
+}
+.filter-check input { cursor: pointer; accent-color: var(--gold); }
+.type-swatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── CATEGORY TABS ── */
+.category-tabs {
+  display: flex; gap: 2px; margin-bottom: 14px;
+  background: var(--mist); border-radius: 4px; padding: 3px;
+}
+.category-tab {
+  flex: 1; padding: 7px 8px; border-radius: 2px; border: none;
+  background: transparent; font-size: 10px; font-family: 'DM Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--mid); cursor: pointer; transition: all 0.15s; text-align: center;
+}
+.category-tab.active { background: white; color: var(--steel); box-shadow: var(--sh); }
+
+/* ── FLAG SELECTOR ── */
+.flag-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.flag-opt {
+  padding: 8px 4px; border-radius: var(--r); border: 1px solid var(--mist);
+  text-align: center; cursor: pointer; font-size: 10px;
+  font-family: 'DM Mono', monospace; text-transform: uppercase;
+  letter-spacing: 0.04em; transition: all 0.12s; color: var(--mid);
+}
+.flag-opt:hover { border-color: var(--steel); }
+.flag-opt.sel-none     { background: white; }
+.flag-opt.sel-monitor  { background: #4a7c59; color: white; border-color: #4a7c59; }
+.flag-opt.sel-schedule { background: #c17f24; color: white; border-color: #c17f24; }
+.flag-opt.sel-urgent   { background: #a33a2e; color: white; border-color: #a33a2e; }
+
+/* ── CONTACT / CONTRACTOR SECTIONS ── */
+.collapsible-section { margin-bottom: 12px; }
+.collapsible-header {
+  background: var(--mist); padding: 8px 12px; border-radius: var(--r);
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--mid);
+  cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  user-select: none;
+}
+.collapsible-header:hover { background: var(--steel); color: var(--paper); }
+.collapsible-body {
+  border: 1px solid var(--mist); border-top: none;
+  border-radius: 0 0 var(--r) var(--r);
+  padding: 12px; background: white; display: none;
+}
+.collapsible-body.open { display: block; }
+
+/* ── PHOTO GRID ── */
+.photo-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px;
+}
+.photo-thumb {
+  aspect-ratio: 1; border-radius: 3px; overflow: hidden; position: relative; cursor: pointer;
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-thumb-del {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(163,58,46,0.85); color: white; border: none;
+  border-radius: 2px; width: 16px; height: 16px;
+  font-size: 10px; cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+}
+.photo-thumb:hover .photo-thumb-del { display: flex; }
+.photo-add-btn {
+  aspect-ratio: 1; border-radius: 3px; border: 1px dashed var(--mist);
+  background: var(--warm); display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 20px; color: var(--mid);
+  transition: all 0.12s;
+}
+.photo-add-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── HISTORY LOG ── */
+.history-log { display: flex; flex-direction: column; gap: 8px; }
+.history-entry {
+  padding: 10px 12px; background: var(--warm);
+  border: 1px solid var(--mist); border-radius: var(--r);
+  border-left: 3px solid var(--gold);
+}
+.history-entry.urgent   { border-left-color: var(--danger); }
+.history-entry.schedule { border-left-color: var(--warn); }
+.history-entry.resolved { border-left-color: var(--success); }
+.history-meta { font-size: 10px; color: var(--mid); font-family: 'DM Mono', monospace; margin-bottom: 3px; }
+.history-text { font-size: 13px; color: var(--ink); line-height: 1.5; }
+
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">Mark<span>View</span></div>
+    <div class="auth-sub">Building Signage Passport</div>
+    <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@company.com" autocomplete="email"></div>
+    <div class="fg"><label>Password</label><input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo">Mark<span>View</span></div>
+    <div class="header-right">
+      <span class="user-badge" id="hdr-email"></span>
+      <span class="role-tag" id="hdr-role"></span>
+      <button class="btn-sm-ghost" onclick="doLogout()">Sign Out</button>
+    </div>
+  </header>
+  <div id="admin-bar" class="admin-bar" style="display:none">
+    <span class="dot"></span> Admin Mode — Click floor plan to place asset pins · Click pins to edit
+  </div>
+
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <div class="sidebar-label">
+          Buildings
+          <button id="add-building-btn" style="display:none" onclick="openBuildingModal()" title="Add building">+</button>
+        </div>
+        <div id="buildings-list"></div>
+      </div>
+
+      <div class="floor-section" id="floor-section" style="display:none">
+        <div class="sidebar-label">
+          Floors
+          <button id="manage-floors-btn" style="display:none" onclick="openFloorModal()" title="Manage floors">⚙</button>
+        </div>
+        <div class="floor-list" id="floor-list"></div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main" id="main-panel">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🏢</div>
+        <div class="welcome-title">Select a building</div>
+        <div class="welcome-sub">Choose a building from the sidebar to begin</div>
+      </div>
+
+      <!-- FLOOR HEADER (hidden until floor selected) -->
+      <div id="floor-ui" style="display:none; display:flex; flex-direction:column; height:100%;">
+        <div class="floor-header">
+          <div>
+            <div class="floor-title" id="fl-title">Floor</div>
+            <div class="floor-sub" id="fl-sub"></div>
+          </div>
+          <div class="floor-actions">
+            <div class="view-toggle">
+              <button class="view-btn active" id="vbtn-map" onclick="setView('map')">📐 Map</button>
+              <button class="view-btn" id="vbtn-grid" onclick="setView('grid')">▦ Grid</button>
+            </div>
+            <button class="btn-gold" id="add-asset-btn" style="display:none" onclick="startPlacing()">+ Add Asset</button>
+            <button class="btn-ghost" id="cancel-place-btn" style="display:none" onclick="cancelPlacing()">Cancel</button>
+            <button class="btn-ghost" id="start-audit-btn" style="display:none" onclick="startAudit()">🔍 Audit</button>
+          </div>
+        </div>
+
+        <div class="stat-bar" id="stat-bar"></div>
+
+        <!-- MAP VIEW -->
+        <div id="map-view" class="floor-plan-view" style="flex:1; position:relative;">
+
+          <!-- No floor plan yet -->
+          <div id="no-plan" class="no-plan-state">
+            <div class="no-plan-icon">🗺</div>
+            <div class="no-plan-title">No floor plan uploaded</div>
+            <div class="no-plan-sub">Upload a floor plan image or PDF to start tagging signage locations on this floor.</div>
+            <div class="plan-upload-zone" id="plan-upload-zone"
+              ondragover="event.preventDefault();this.classList.add('drag-over')"
+              ondragleave="this.classList.remove('drag-over')"
+              ondrop="handlePlanDrop(event)">
+              <div class="plan-upload-icon">📄</div>
+              <div class="plan-upload-text">Drag floor plan here or <strong onclick="document.getElementById('plan-file-input').click()">browse</strong></div>
+              <div class="plan-upload-hint">JPG · PNG · PDF · up to 20MB</div>
+              <input type="file" id="plan-file-input" accept="image/*,application/pdf" onchange="handlePlanFile(this)">
+            </div>
+          </div>
+
+          <!-- Floor plan + pins -->
+          <div id="plan-wrap" style="display:none; position:relative; width:100%; height:100%; overflow:auto;">
+            <!-- The plan container holds canvas/img and pins -->
+            <div id="plan-container" style="position:relative; display:inline-block; min-width:100%;" onmousemove="handlePlanMouseMove(event)" onmouseleave="removeGhostPin()">
+              <canvas id="plan-canvas" style="display:none; max-width:100%; height:auto; cursor:default;"></canvas>
+              <img id="plan-img" alt="Floor plan" style="display:none; max-width:100%; height:auto;">
+              <div id="pins-layer" style="position:absolute; inset:0; pointer-events:none; z-index:5; overflow:visible;"></div>
+            </div>
+
+            <!-- Overlays -->
+            <!-- MAP TOOLBAR -->
+            <div class="map-toolbar" id="map-toolbar">
+              <button class="toolbar-btn" id="tb-add" onclick="startPlacing()" title="Add Asset">
+                📍<span class="toolbar-tooltip">Add Asset</span>
+              </button>
+              <button class="toolbar-btn" id="tb-audit" onclick="startAudit()" title="Audit Mode">
+                📋<span class="toolbar-tooltip">Audit Mode</span>
+              </button>
+              <div class="toolbar-divider"></div>
+              <button class="toolbar-btn" id="tb-filter" onclick="toggleFilterPanel()" title="Filter">
+                ⚙<span class="toolbar-tooltip">Filter by Type</span>
+              </button>
+              <button class="toolbar-btn" id="tb-flags" onclick="toggleFlagFilter()" title="Show Flagged">
+                🚩<span class="toolbar-tooltip">Show Flagged Only</span>
+              </button>
+              <div class="toolbar-divider"></div>
+              <button class="toolbar-btn" onclick="toggleDragZoom()" id="tb-zoom" title="Zoom">
+                🔍<span class="toolbar-tooltip">Drag to Zoom</span>
+              </button>
+              <button class="toolbar-btn" onclick="resetZoom()" title="Reset View">
+                ⊙<span class="toolbar-tooltip">Reset View</span>
+              </button>
+            </div>
+
+            <!-- FILTER PANEL -->
+            <div class="filter-panel" id="filter-panel">
+              <div class="filter-panel-title">Filter by Type</div>
+              <div style="font-size:9px;color:var(--mid);font-family:'DM Mono',monospace;margin-bottom:6px">SIGNAGE</div>
+              <label class="filter-check"><input type="checkbox" checked data-type="directory" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#3d6b8f"></span>Directory</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="tenant_id" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#6b4f8f"></span>Tenant ID</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="egress" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#8f4f3d"></span>Egress</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="stairwell" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#4f7a5a"></span>Stairwell</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="service_room" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#7a6b3d"></span>Service Room</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="other" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#5a5a6b"></span>Other</label>
+              <div style="font-size:9px;color:var(--mid);font-family:'DM Mono',monospace;margin:10px 0 6px">FACILITIES</div>
+              <label class="filter-check"><input type="checkbox" checked data-type="wayfinding" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#b8965a"></span>Wayfinding</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="tenant_products" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#2e7d6e"></span>Tenant Products</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="utility" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#546e8a"></span>Utility Room</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="emergency" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#c0392b"></span>Emergency</label>
+              <label class="filter-check"><input type="checkbox" checked data-type="evacuation" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#e67e22"></span>Evacuation</label>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--mist);display:flex;gap:6px">
+                <button onclick="selectAllFilters(true)" style="flex:1;padding:5px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;border:1px solid var(--mist);border-radius:3px;background:white">All</button>
+                <button onclick="selectAllFilters(false)" style="flex:1;padding:5px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;border:1px solid var(--mist);border-radius:3px;background:white">None</button>
+              </div>
+            </div>
+
+            <div class="place-hint" id="place-hint">Click anywhere on the floor plan to place a new asset pin</div>
+            <div id="plan-loading" style="display:none; position:absolute; inset:0; background:rgba(240,237,230,0.9); align-items:center; justify-content:center; flex-direction:column; gap:12px;">
+              <div class="spinner"></div>
+              <div style="font-size:12px; font-family:'DM Mono',monospace; color:var(--mid)">Rendering floor plan...</div>
+            </div>
+
+            <!-- Controls -->
+            <button id="magnifier-btn" onclick="toggleDragZoom()" title="Drag to zoom — draw a box over area to zoom in"
+              style="position:absolute; bottom:52px; right:12px; z-index:20; width:36px; height:36px; border-radius:4px; background:rgba(44,53,64,0.85); color:white; border:none; font-size:18px; cursor:pointer; backdrop-filter:blur(4px);">🔍</button>
+            <button onclick="resetZoom()" title="Reset zoom"
+              style="position:absolute; bottom:12px; right:12px; z-index:20; width:36px; height:36px; border-radius:4px; background:rgba(44,53,64,0.85); color:white; border:none; font-size:14px; cursor:pointer; backdrop-filter:blur(4px);">⊙</button>
+            <button id="replace-plan-btn" onclick="document.getElementById('plan-file-input').click()"
+              style="position:absolute; bottom:12px; left:12px; background:rgba(44,53,64,0.8); color:white; border:none; padding:6px 14px; border-radius:4px; font-size:11px; font-family:'DM Mono',monospace; cursor:pointer; backdrop-filter:blur(4px); z-index:10;">
+              Replace Floor Plan
+            </button>
+          </div>
+
+          <!-- Asset panel -->
+          <div class="asset-panel" id="asset-panel">
+            <div class="panel-header">
+              <div class="panel-title" id="panel-title">Asset</div>
+              <button class="panel-close" onclick="closePanel()">✕</button>
+            </div>
+            <div class="panel-body" id="panel-body"></div>
+            <div class="panel-footer" id="panel-footer"></div>
+          </div>
+        </div>
+
+        <!-- GRID VIEW -->
+        <div id="grid-view" style="display:none; flex:1; overflow-y:auto; padding:20px 24px;">
+          <div class="filter-bar">
+            <button class="filter-chip active" onclick="filterGrid('all',this)">All</button>
+            <button class="filter-chip" onclick="filterGrid('directory',this)">Directory</button>
+            <button class="filter-chip" onclick="filterGrid('tenant_id',this)">Tenant ID</button>
+            <button class="filter-chip" onclick="filterGrid('egress',this)">Egress</button>
+            <button class="filter-chip" onclick="filterGrid('stairwell',this)">Stairwell</button>
+            <button class="filter-chip" onclick="filterGrid('service_room',this)">Service Room</button>
+            <div class="search-wrap"><input type="text" placeholder="Search assets..." oninput="searchGrid(this.value)"></div>
+          </div>
+          <div class="asset-grid" id="asset-grid"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ASSET MODAL (new/edit) -->
+<div class="modal-overlay" id="asset-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="am-title">New Asset</div>
+        <div id="am-pin-indicator" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--gold);margin-top:2px;display:none">📍 Pin placed on floor plan</div>
+        <div id="am-no-pin-indicator" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--danger);margin-top:2px;display:none">⚠ No pin — asset will be saved without map location</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('asset-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="am-photo-preview" style="width:100%;min-height:80px;border-radius:4px;background:var(--mist);display:flex;align-items:center;justify-content:center;margin-bottom:14px;overflow:hidden;">
+        <span style="color:var(--mid);font-size:12px;font-family:'DM Mono',monospace">No photo yet</span>
+      </div>
+      <div class="upload-zone" id="am-upload-zone"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="handleAssetDrop(event)">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">Drag photo here or <strong onclick="document.getElementById('asset-file-input').click()">browse</strong></div>
+        <input type="file" id="asset-file-input" accept="image/*" onchange="handleAssetFile(this)">
+      <div id="am-change-photo" style="display:none;text-align:right;margin-bottom:8px">
+        <span onclick="document.getElementById('asset-file-input').click()" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--gold);cursor:pointer;text-decoration:underline">Change photo</span>
+      </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg" style="margin:0"><label>Location Name</label><input type="text" id="am-name" placeholder="e.g. Suite 1204 Nameplate"></div>
+        <div class="fg" style="margin:0"><label>Asset Type</label>
+          <select id="am-type" onchange="updateTypeCategory()">
+            <optgroup label="── Signage ──">
+              <option value="directory">Directory</option>
+              <option value="tenant_id">Tenant ID</option>
+              <option value="egress">Egress Map</option>
+              <option value="stairwell">Stairwell</option>
+              <option value="service_room">Service Room</option>
+              <option value="other">Other</option>
+            </optgroup>
+            <optgroup label="── Facilities ──">
+              <option value="wayfinding">Wayfinding</option>
+              <option value="tenant_products">Tenant Products</option>
+              <option value="utility">Utility Room</option>
+              <option value="emergency">Emergency</option>
+              <option value="evacuation">Evacuation</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg" style="margin:0"><label>Product SKU</label><input type="text" id="am-sku" placeholder="OM-DIR-001"></div>
+        <div class="fg" style="margin:0"><label>Audit Date</label><input type="date" id="am-date"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>Shopify Reorder URL</label><input type="url" id="am-url" placeholder="https://officemark.ca/products/..."></div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Condition</label>
+        <div class="condition-selector">
+          <div class="cond-opt sel" data-v="good" onclick="selCond('good')">Good</div>
+          <div class="cond-opt" data-v="fair" onclick="selCond('fair')">Fair</div>
+          <div class="cond-opt" data-v="replace" onclick="selCond('replace')">Replace</div>
+          <div class="cond-opt" data-v="missing" onclick="selCond('missing')">Missing</div>
+        </div>
+      </div>
+      <div class="fg" style="margin:0"><label>Notes</label><textarea id="am-notes" rows="2" placeholder="Any relevant notes..."></textarea></div>
+
+      <!-- FLAG -->
+      <div class="fg" style="margin-bottom:12px">
+        <label>Service Flag</label>
+        <div class="flag-selector">
+          <div class="flag-opt sel-none" data-flag="none" onclick="selFlag('none')">None</div>
+          <div class="flag-opt" data-flag="monitor" onclick="selFlag('monitor')">Monitor</div>
+          <div class="flag-opt" data-flag="schedule" onclick="selFlag('schedule')">Schedule</div>
+          <div class="flag-opt" data-flag="urgent" onclick="selFlag('urgent')">Urgent</div>
+        </div>
+      </div>
+      <div class="fg" id="am-flag-reason-wrap" style="margin-bottom:12px;display:none">
+        <label>Flag Reason</label>
+        <textarea id="am-flag-reason" rows="2" placeholder="Describe the issue..."></textarea>
+      </div>
+
+      <!-- RESPONSIBLE CONTACT -->
+      <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapse('am-contact')">
+          Responsible Contact <span id="am-contact-arrow">▸</span>
+        </div>
+        <div class="collapsible-body" id="am-contact">
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="fg" style="margin:0"><label>Name</label><input type="text" id="am-contact-name" placeholder="Jane Smith"></div>
+            <div class="fg" style="margin:0"><label>Title</label><input type="text" id="am-contact-title" placeholder="Facilities Manager"></div>
+          </div>
+          <div class="form-row" style="margin:0">
+            <div class="fg" style="margin:0"><label>Phone</label><input type="text" id="am-contact-phone" placeholder="416-555-0100"></div>
+            <div class="fg" style="margin:0"><label>Email</label><input type="email" id="am-contact-email" placeholder="jane@building.com"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTRACTOR -->
+      <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleCollapse('am-contractor')">
+          Contractor Information <span id="am-contractor-arrow">▸</span>
+        </div>
+        <div class="collapsible-body" id="am-contractor">
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="fg" style="margin:0"><label>Company</label><input type="text" id="am-contractor-co" placeholder="ABC Services Ltd."></div>
+            <div class="fg" style="margin:0"><label>Contact</label><input type="text" id="am-contractor-contact" placeholder="Bob Jones"></div>
+          </div>
+          <div class="form-row" style="margin-bottom:8px">
+            <div class="fg" style="margin:0"><label>Phone</label><input type="text" id="am-contractor-phone" placeholder="416-555-0200"></div>
+            <div class="fg" style="margin:0"><label>Work Order #</label><input type="text" id="am-contractor-wo" placeholder="WO-2026-001"></div>
+          </div>
+          <div class="form-row" style="margin:0">
+            <div class="fg" style="margin:0"><label>Completed Date</label><input type="date" id="am-contractor-date"></div>
+            <div class="fg" style="margin:0"><label>Cost (CAD)</label><input type="number" id="am-contractor-cost" placeholder="0.00" step="0.01"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('asset-modal')">Cancel</button>
+        <button class="btn-ghost" id="am-place-pin-btn" style="display:none" onclick="assignPinToExisting()">📍 Place Pin</button>
+        <button class="btn-gold" onclick="saveAsset()" id="am-save">Save Asset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BUILDING MODAL -->
+<div class="modal-overlay" id="building-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Building</div>
+      <button class="modal-close" onclick="closeModal('building-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg" style="margin:0"><label>Building Name</label><input type="text" id="bm-name" placeholder="161 Bay St."></div>
+        <div class="fg" style="margin:0"><label>City</label><input type="text" id="bm-city" placeholder="Toronto"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="fg" style="margin:0"><label>Address</label><input type="text" id="bm-address" placeholder="161 Bay Street"></div>
+        <div class="fg" style="margin:0"><label>Province</label><input type="text" id="bm-province" placeholder="ON"></div>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>Shopify Collection URL</label><input type="url" id="bm-shopify" placeholder="https://officemark.ca/collections/..."></div>
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('building-modal')">Cancel</button>
+        <button class="btn-gold" onclick="saveBuilding()">Add Building</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FLOOR MANAGEMENT MODAL -->
+<div class="modal-overlay" id="floor-modal">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title" id="fm-title">Manage Floors</div>
+      <button class="modal-close" onclick="closeModal('floor-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="floor-mgmt-list" class="floor-mgmt-grid"></div>
+
+      <div style="border-top:1px solid var(--mist);padding-top:16px;margin-top:4px">
+        <div style="font-size:12px;color:var(--mid);font-family:'DM Mono',monospace;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em">Add Floors</div>
+
+        <!-- Quick generate -->
+        <div style="background:white;border:1px solid var(--mist);border-radius:4px;padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:500;color:var(--steel);margin-bottom:10px">Generate Floor Range</div>
+          <div class="form-row-3" style="margin-bottom:10px">
+            <div class="fg" style="margin:0"><label>From</label><input type="text" id="gen-from" placeholder="B2" style="text-align:center"></div>
+            <div class="fg" style="margin:0"><label>To</label><input type="text" id="gen-to" placeholder="48" style="text-align:center"></div>
+            <div class="fg" style="margin:0"><label>Prefix</label><input type="text" id="gen-prefix" placeholder="Floor" style="text-align:center"></div>
+          </div>
+          <div style="font-size:11px;color:var(--mid);margin-bottom:10px;font-family:'DM Mono',monospace">e.g. From: B2, To: 48, Prefix: Floor → B2, B1, Ground, Floor 2 ... Floor 48</div>
+          <button class="btn-ghost" onclick="previewFloors()" style="width:100%">Preview & Add Floors</button>
+        </div>
+
+        <!-- Single floor -->
+        <div style="display:flex;gap:8px">
+          <input type="text" id="single-floor" placeholder="e.g. Roof, Mezzanine, P1" style="flex:1">
+          <button class="btn-gold" onclick="addSingleFloor()">Add Floor</button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost" onclick="closeModal('floor-modal')">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="Asset photo">
+</div>
+
+<!-- QUICK AUDIT OVERLAY -->
+<div id="audit-overlay">
+  <div class="audit-header">
+    <div class="audit-header-left">
+      <span class="audit-badge">Audit</span>
+      <span class="audit-floor-name" id="audit-floor-name">Floor</span>
+    </div>
+    <div class="audit-progress-wrap">
+      <div class="audit-progress-bar"><div class="audit-progress-fill" id="audit-progress-fill" style="width:0%"></div></div>
+      <div class="audit-progress-label" id="audit-progress-label">0 of 0 audited</div>
+    </div>
+    <button class="audit-end-btn" onclick="endAudit()">End Audit</button>
+  </div>
+  <div class="audit-plan-wrap">
+    <div class="audit-plan-container" id="audit-plan-container">
+      <img id="audit-plan-img" class="audit-plan-img" alt="Floor plan" onclick="handleAuditPlanClick(event)">
+      <div id="audit-pins-layer"></div>
+      <div class="audit-place-hint" id="audit-place-hint">Tap floor plan to drop a new asset pin</div>
+    </div>
+  </div>
+  <div class="audit-toolbar">
+    <button class="audit-tool-btn primary" id="audit-new-btn" onclick="startAuditPlace()">📍 New Asset</button>
+    <button class="audit-tool-btn secondary" id="audit-cancel-btn" style="display:none" onclick="cancelAuditPlace()">Cancel</button>
+    <div class="audit-legend">
+      <div class="audit-legend-item"><div class="audit-legend-dot" style="background:var(--success)"></div>Audited</div>
+      <div class="audit-legend-item"><div class="audit-legend-dot" style="background:var(--danger);opacity:0.6"></div>Not yet</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK CAPTURE SHEET -->
+<div class="capture-sheet" id="capture-sheet">
+  <div class="capture-sheet-handle"></div>
+  <div class="capture-sheet-header">
+    <div class="capture-sheet-title" id="cs-title">New Asset</div>
+    <button class="capture-sheet-close" onclick="closeCaptureSheet()">✕</button>
+  </div>
+  <div class="capture-sheet-body">
+    <div id="cs-photo-area">
+      <button class="photo-capture-btn" onclick="document.getElementById('audit-photo-input').click()">
+        <span class="capture-icon">📷</span>
+        <span class="capture-label">Tap to take photo</span>
+        <span class="capture-hint">Camera · Photo Library</span>
+      </button>
+    </div>
+    <input type="file" id="audit-photo-input" accept="image/*" capture="environment" onchange="handleAuditPhoto(this)">
+    <div id="cs-name-row" class="fg" style="margin-bottom:12px">
+      <label>Location Name</label>
+      <input type="text" id="cs-name" placeholder="e.g. Suite 1204 Nameplate" style="font-size:16px">
+    </div>
+    <div id="cs-type-row" style="margin-bottom:4px">
+      <label>Type</label>
+      <div class="type-chip-grid">
+        <div class="type-chip sel" data-t="directory" onclick="selAuditType('directory')"><span class="tc-icon">🗂</span>Directory</div>
+        <div class="type-chip" data-t="tenant_id" onclick="selAuditType('tenant_id')"><span class="tc-icon">🏷</span>Tenant ID</div>
+        <div class="type-chip" data-t="egress" onclick="selAuditType('egress')"><span class="tc-icon">🚨</span>Egress</div>
+        <div class="type-chip" data-t="stairwell" onclick="selAuditType('stairwell')"><span class="tc-icon">🪜</span>Stairwell</div>
+        <div class="type-chip" data-t="service_room" onclick="selAuditType('service_room')"><span class="tc-icon">🔧</span>Service Room</div>
+        <div class="type-chip" data-t="other" onclick="selAuditType('other')"><span class="tc-icon">📍</span>Other</div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label>Condition</label>
+      <div class="cond-chip-row">
+        <div class="cond-chip sel-good" data-c="good" onclick="selAuditCond('good')">Good</div>
+        <div class="cond-chip" data-c="fair" onclick="selAuditCond('fair')">Fair</div>
+        <div class="cond-chip" data-c="replace" onclick="selAuditCond('replace')">Replace</div>
+        <div class="cond-chip" data-c="missing" onclick="selAuditCond('missing')">Missing</div>
+      </div>
+    </div>
+    <button class="audit-save-btn" id="cs-save-btn" onclick="saveAuditAsset()">Save & Continue</button>
+  </div>
+</div>
+
+<!-- END AUDIT SUMMARY -->
+<div class="audit-summary-overlay" id="audit-summary">
+  <div class="audit-summary-card">
+    <div class="audit-summary-title">Audit Complete</div>
+    <div class="audit-summary-sub" id="as-sub"></div>
+    <div class="audit-summary-stats">
+      <div class="audit-sum-stat"><div class="audit-sum-num" id="as-total">0</div><div class="audit-sum-lbl">Total</div></div>
+      <div class="audit-sum-stat"><div class="audit-sum-num" id="as-audited" style="color:var(--success)">0</div><div class="audit-sum-lbl">Audited</div></div>
+      <div class="audit-sum-stat"><div class="audit-sum-num" id="as-missed" style="color:var(--danger)">0</div><div class="audit-sum-lbl">Missed</div></div>
+    </div>
+    <div class="missed-list" id="as-missed-list">
+      <div class="missed-list-title">⚠ Not Audited This Session</div>
+      <div id="as-missed-items"></div>
+    </div>
+    <div class="audit-summary-actions">
+      <button class="btn-ghost" style="flex:1;justify-content:center" onclick="closeAuditSummary(false)">Review Floor</button>
+      <button class="btn-gold" style="flex:1;justify-content:center" onclick="closeAuditSummary(true)">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img class="lightbox-img" id="lightbox-img" alt="Asset photo" onclick="event.stopPropagation()">
+  <div class="lightbox-zoom-row" onclick="event.stopPropagation()">
+    <button class="lightbox-zoom-btn" onclick="lightboxZoom(-0.25)">−</button>
+    <span class="lightbox-zoom-label" id="lightbox-zoom-label">100%</span>
+    <button class="lightbox-zoom-btn" onclick="lightboxZoom(0.25)">+</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xjmmfqjwyqbqhchehowy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Pax2PS7C-UQuyo74-ObmSQ_LCWN0GWa';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── STATE ──
+let user = null, profile = null;
+let currentBuilding = null, currentFloor = null;
+let allAssets = [], pendingAssetFile = null, pendingPlanFile = null;
+let editingAssetId = null, editingLocationId = null;
+let currentCondition = 'good';
+let placing = false, pendingPinX = null, pendingPinY = null;
+let currentView = 'map';
+let floorAssetCounts = {};
+
+// ── INIT ──
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await onSignedIn(session.user);
+  sb.auth.onAuthStateChange(async (e, s) => {
+    if (e === 'SIGNED_IN') await onSignedIn(s.user);
+    if (e === 'SIGNED_OUT') showAuth();
+  });
+}
+
+async function onSignedIn(u) {
+  user = u;
+  const { data: p } = await sb.from('user_profiles').select('*').eq('id', u.id).single();
+  profile = p;
+  document.getElementById('hdr-email').textContent = u.email;
+  document.getElementById('hdr-role').textContent = profile?.role || 'user';
+  const isAdmin = isAdminUser();
+  if (isAdmin) {
+    document.getElementById('admin-bar').style.display = 'flex';
+    document.getElementById('add-building-btn').style.display = 'block';
+  }
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  await loadBuildings();
+}
+
+const isAdminUser = () => profile?.role === 'superadmin' || profile?.role === 'org_admin';
+
+// ── AUTH ──
+async function doLogin() {
+  const email = document.getElementById('a-email').value.trim();
+  const pass = document.getElementById('a-pass').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('auth-err');
+  btn.disabled = true; btn.textContent = 'Signing in...'; err.style.display = 'none';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Sign In'; }
+}
+async function doLogout() { await sb.auth.signOut(); }
+function showAuth() { document.getElementById('auth-screen').style.display='flex'; document.getElementById('app').style.display='none'; }
+
+document.getElementById('a-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── BUILDINGS ──
+async function loadBuildings() {
+  const { data } = await sb.from('buildings').select('*, organizations(name)').order('name');
+  const el = document.getElementById('buildings-list');
+  el.innerHTML = '';
+  if (!data?.length) { el.innerHTML = '<div style="font-size:12px;color:var(--mid);padding:8px 4px;font-family:DM Mono,monospace">No buildings yet</div>'; return; }
+  data.forEach(b => {
+    const d = document.createElement('div');
+    d.className = 'building-card';
+    d.dataset.buildingId = b.id;
+    d.innerHTML = `<div class="building-name">${b.name}</div><div class="building-meta">${b.city||''} · ${b.floor_count||'?'} floors</div>`;
+    d.onclick = () => selectBuilding(b, d);
+    el.appendChild(d);
+  });
+
+  // Restore last viewed building/floor after cards are in the DOM
+  const lastBuildingId = localStorage.getItem('mv_building');
+  const lastFloorId = localStorage.getItem('mv_floor');
+  if (lastBuildingId) {
+    const card = document.querySelector(`[data-building-id="${lastBuildingId}"]`);
+    if (card) {
+      const bObj = data.find(b => b.id === lastBuildingId);
+      if (bObj) await selectBuilding(bObj, card);
+      if (lastFloorId) {
+        // Wait for floors to render then click the right one
+        setTimeout(() => {
+          const floorEl = document.querySelector(`[data-floor-id="${lastFloorId}"]`);
+          if (floorEl) floorEl.click();
+        }, 600);
+      }
+    }
+  }
+}
+
+async function selectBuilding(b, el) {
+  document.querySelectorAll('.building-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentBuilding = b; currentFloor = null;
+  localStorage.setItem('mv_building', b.id);
+  localStorage.removeItem('mv_floor');
+  document.getElementById('floor-section').style.display = 'block';
+  if (isAdminUser()) document.getElementById('manage-floors-btn').style.display = 'block';
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('floor-ui').style.display = 'none';
+  loadFloors(b.id);
+}
+
+// ── FLOORS ──
+async function loadFloors(buildingId) {
+  const { data } = await sb.from('floors').select('*').eq('building_id', buildingId).order('sort_order');
+  const el = document.getElementById('floor-list');
+  el.innerHTML = '';
+  if (!data?.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--mid);padding:8px 4px;font-family:DM Mono,monospace">No floors — click ⚙ to add</div>';
+    return;
+  }
+  data.forEach(f => {
+    const d = document.createElement('div');
+    d.className = 'floor-item';
+    d.dataset.floorId = f.id;
+    d.innerHTML = `
+      <span class="floor-plan-dot ${f.floor_plan_url ? '' : 'missing'}"></span>
+      <span class="floor-label">${f.label}</span>
+      <span class="floor-asset-count" id="fac-${f.id}"></span>
+    `;
+    d.onclick = () => selectFloor(f, d);
+    el.appendChild(d);
+  });
+  loadFloorAssetCounts(buildingId);
+}
+
+async function loadFloorAssetCounts(buildingId) {
+  const { data: floors } = await sb.from('floors').select('id').eq('building_id', buildingId);
+  if (!floors) return;
+  for (const f of floors) {
+    const { count } = await sb.from('assets')
+      .select('*, locations!inner(floor_id)', { count: 'exact', head: true })
+      .eq('locations.floor_id', f.id)
+      .eq('is_current', true);
+    const el = document.getElementById(`fac-${f.id}`);
+    if (el && count > 0) el.textContent = count;
+  }
+}
+
+async function selectFloor(f, el) {
+  document.querySelectorAll('.floor-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  // Always reload floor from DB to get latest floor_plan_url
+  const { data: freshFloor } = await sb.from('floors').select('*').eq('id', f.id).single();
+  currentFloor = freshFloor || f;
+  localStorage.setItem('mv_floor', f.id);
+
+  // Full state reset
+  placing = false;
+  window._assigningToAsset = null;
+  allAssets = [];
+  cancelPlacing();
+  closePanel();
+
+  // Reset UI
+  document.getElementById('plan-wrap').style.display = 'none';
+  document.getElementById('no-plan').style.display = 'none';
+  document.getElementById('pins-layer').innerHTML = '';
+  const oldCanvas = document.getElementById('plan-canvas');
+  const oldImg = document.getElementById('plan-img');
+  oldCanvas.style.display = 'none';
+  oldImg.style.display = 'none';
+  oldImg.src = '';
+  const ctx = oldCanvas.getContext('2d');
+  ctx.clearRect(0, 0, oldCanvas.width, oldCanvas.height);
+  resetZoom();
+
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('floor-ui').style.display = 'flex';
+  document.getElementById('fl-title').textContent = `${currentBuilding.name} — ${f.label}`;
+  document.getElementById('fl-sub').textContent = `${currentBuilding.city||''} · ${currentBuilding.address||''}`;
+
+  const isAdmin = isAdminUser();
+  document.getElementById('add-asset-btn').style.display = isAdmin ? 'block' : 'none';
+  const auditBtn = document.getElementById('start-audit-btn');
+  // Show/hide floor plan — use currentFloor (fresh from DB) not f (stale sidebar data)
+  const planUrl = currentFloor.floor_plan_url;
+  if (planUrl) {
+    document.getElementById('no-plan').style.display = 'none';
+    document.getElementById('plan-wrap').style.display = 'block';
+    document.getElementById('replace-plan-btn').style.display = isAdmin ? 'block' : 'none';
+    if (auditBtn) auditBtn.style.display = isAdmin ? 'block' : 'none';
+    await displayFloorPlan(planUrl);
+  } else {
+    document.getElementById('no-plan').style.display = 'flex';
+    document.getElementById('plan-wrap').style.display = 'none';
+    document.getElementById('plan-upload-zone').style.display = isAdmin ? 'block' : 'none';
+    if (!isAdmin) {
+      document.getElementById('no-plan').querySelector('.no-plan-sub').textContent = 'The floor plan for this level has not been uploaded yet.';
+    }
+  }
+
+  await loadAssets(f.id);
+}
+
+// ── ASSETS ──
+async function loadAssets(floorId) {
+  const { data, error } = await sb.from('assets')
+    .select('*, locations!inner(id, name, asset_type, floor_id, position_x, position_y, category)')
+    .eq('locations.floor_id', floorId)
+    .eq('is_current', true)
+    .order('created_at');
+
+  if (error) { toast('Error loading assets', 'error'); return; }
+  allAssets = data || [];
+  renderPins();
+  renderGrid(allAssets);
+  renderStats();
+}
+
+// ── PINS ──
+function renderPins() {
+  const layer = document.getElementById('pins-layer');
+  layer.innerHTML = '';
+  allAssets.forEach(a => {
+    const loc = a.locations;
+    if (loc.position_x == null || loc.position_y == null) return;
+    // Apply type filter
+    if (!activeTypeFilters.has(loc.asset_type)) return;
+    // Apply flag filter
+    if (flagFilterActive && !a.service_flag) return;
+    const pin = document.createElement('div');
+    pin.className = `pin pin-${loc.asset_type}`;
+    pin.dataset.assetId = a.id;
+    pin.style.left = loc.position_x + '%';
+    pin.style.top = loc.position_y + '%';
+    pin.style.pointerEvents = 'auto';
+    const flagDot = a.service_flag && !a.flag_resolved
+      ? `<div class="flag-dot ${a.service_flag}"></div>` : '';
+    pin.innerHTML = `
+      <div class="pin-label">${loc.name}</div>
+      <div class="pin-body cond-${a.condition||'good'}" style="background:${typeColor(loc.asset_type)}">${typeIcon(loc.asset_type)}</div>
+      ${flagDot}
+    `;
+    pin.onclick = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (!placing) openAssetPanel(a);
+    };
+    layer.appendChild(pin);
+  });
+}
+
+// typeIcon now defined above
+
+// ── PLACE PIN ──
+function startPlacing() {
+  if (!currentFloor?.floor_plan_url) { toast('Upload a floor plan first', 'error'); return; }
+  placing = true;
+  // Apply crosshair cursor to both possible plan elements
+  document.getElementById('plan-canvas').style.cursor = 'crosshair';
+  document.getElementById('plan-img').style.cursor = 'crosshair';
+  document.getElementById('plan-wrap').style.cursor = 'crosshair';
+  document.getElementById('place-hint').classList.add('show');
+  document.getElementById('add-asset-btn').style.display = 'none';
+  document.getElementById('cancel-place-btn').style.display = 'block';
+  closePanel();
+  toast('Click on the floor plan to place the pin', 'success');
+}
+
+function cancelPlacing() {
+  placing = false;
+  document.getElementById('plan-canvas').style.cursor = '';
+  document.getElementById('plan-img').style.cursor = '';
+  document.getElementById('plan-wrap').style.cursor = '';
+  document.getElementById('place-hint').classList.remove('show');
+  if (isAdminUser()) document.getElementById('add-asset-btn').style.display = 'block';
+  document.getElementById('cancel-place-btn').style.display = 'none';
+  pendingPinX = null; pendingPinY = null;
+}
+
+function handlePlanClick(e) {
+  if (!placing || !isAdminUser()) return;
+  const planEl = getPlanElement();
+  if (!planEl || planEl.style.display === 'none') return;
+  const rect = planEl.getBoundingClientRect();
+  const pinX = ((e.clientX - rect.left) / rect.width) * 100;
+  const pinY = ((e.clientY - rect.top) / rect.height) * 100;
+  // Sanity check coordinates are within bounds
+  if (pinX < 0 || pinX > 100 || pinY < 0 || pinY > 100) return;
+  removeGhostPin();
+  // Cancel placing mode UI without clearing coords
+  placing = false;
+  document.getElementById('plan-canvas').style.cursor = '';
+  document.getElementById('plan-img').style.cursor = '';
+  document.getElementById('plan-wrap').style.cursor = '';
+  document.getElementById('place-hint').classList.remove('show');
+  if (isAdminUser()) document.getElementById('add-asset-btn').style.display = 'block';
+  document.getElementById('cancel-place-btn').style.display = 'none';
+
+  if (window._assigningToAsset) {
+    const asset = window._assigningToAsset;
+    window._assigningToAsset = null;
+    sb.from('locations').update({ position_x: pinX, position_y: pinY })
+      .eq('id', asset.locations.id)
+      .then(({ error }) => {
+        if (error) { toast('Failed to place pin: ' + error.message, 'error'); return; }
+        asset.locations.position_x = pinX;
+        asset.locations.position_y = pinY;
+        toast('Pin placed!', 'success');
+        loadAssets(currentFloor.id);
+      });
+  } else {
+    // Store coords then open modal
+    pendingPinX = pinX;
+    pendingPinY = pinY;
+    openAssetModal();
+  }
+}
+
+function handlePlanMouseMove(e) {
+  if (!placing) return;
+  const container = document.getElementById('plan-container');
+  const rect = container.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / container.offsetHeight) * 100;
+  let ghost = document.getElementById('ghost-pin');
+  if (!ghost) {
+    ghost = document.createElement('div');
+    ghost.id = 'ghost-pin';
+    ghost.className = 'ghost-pin';
+    ghost.innerHTML = '<div class="ghost-pin-body"></div>';
+    container.appendChild(ghost);
+  }
+  ghost.style.left = x + '%';
+  ghost.style.top = y + '%';
+}
+
+function removeGhostPin() {
+  const ghost = document.getElementById('ghost-pin');
+  if (ghost) ghost.remove();
+}
+
+// ── FLOOR PLAN RENDER ──
+async function displayFloorPlan(url) {
+  const isPdf = url.toLowerCase().includes('.pdf') || url.toLowerCase().includes('application/pdf');
+  const canvas = document.getElementById('plan-canvas');
+  const img = document.getElementById('plan-img');
+  const loading = document.getElementById('plan-loading');
+
+  // Reset both elements
+  canvas.style.display = 'none';
+  img.style.display = 'none';
+  img.src = '';
+  loading.style.display = 'flex';
+
+  try {
+    if (isPdf) {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdfDoc.getPage(1);
+      const container = document.getElementById('plan-wrap');
+      const containerWidth = Math.max(container.clientWidth, 800);
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = (containerWidth / viewport.width) * 1.5;
+      const scaledViewport = page.getViewport({ scale });
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+      canvas.style.display = 'block';
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+      img.style.display = 'none';
+    } else {
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+        img.src = url;
+      });
+      img.style.display = 'block';
+      canvas.style.display = 'none';
+    }
+  } catch(err) {
+    console.error('Floor plan render error:', err);
+    toast('Floor plan failed to load: ' + err.message, 'error');
+  } finally {
+    loading.style.display = 'none';
+    attachPlanClickListener();
+    initDragZoom();
+  }
+}
+
+// Get the active plan element (canvas or img) for click coordinate calc
+function getPlanElement() {
+  const canvas = document.getElementById('plan-canvas');
+  if (canvas.style.display !== 'none') return canvas;
+  return document.getElementById('plan-img');
+}
+
+// Attach plan click listener once
+function attachPlanClickListener() {
+  const container = document.getElementById('plan-container');
+  if (!container || container._clickAttached) return;
+  container._clickAttached = true;
+  container.addEventListener('click', (e) => {
+    // Ignore clicks on pins
+    if (e.target.closest('.pin')) return;
+    handlePlanClick(e);
+  });
+}
+
+// ── FLOOR PLAN UPLOAD ──
+function handlePlanDrop(e) {
+  e.preventDefault();
+  document.getElementById('plan-upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFloorPlan(file);
+}
+
+function handlePlanFile(input) {
+  if (input.files[0]) uploadFloorPlan(input.files[0]);
+}
+
+async function uploadFloorPlan(file) {
+  if (!currentFloor) return;
+  toast('Uploading floor plan...', 'success');
+  const ext = file.name.split('.').pop();
+  const path = `plans/${currentBuilding.id}/${currentFloor.id}/plan.${ext}`;
+  const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, file, { upsert: true });
+  if (upErr) { toast('Upload failed: ' + upErr.message, 'error'); return; }
+  const { data: urlData } = sb.storage.from('waymark-assets').getPublicUrl(path);
+  const { error: dbErr } = await sb.from('floors').update({ floor_plan_url: urlData.publicUrl }).eq('id', currentFloor.id);
+  if (dbErr) { toast('Database error: ' + dbErr.message, 'error'); return; }
+  currentFloor.floor_plan_url = urlData.publicUrl;
+  toast('Floor plan uploaded!', 'success');
+
+  // Refresh floor display
+  document.getElementById('no-plan').style.display = 'none';
+  document.getElementById('plan-wrap').style.display = 'block';
+  document.getElementById('replace-plan-btn').style.display = 'block';
+  displayFloorPlan(urlData.publicUrl + '?t=' + Date.now());
+
+  // Update sidebar dot
+  const dot = document.querySelector(`[data-floor-id="${currentFloor.id}"] .floor-plan-dot`);
+  if (dot) { dot.classList.remove('missing'); }
+}
+
+// ── ASSET PANEL ──
+function openAssetPanel(asset) {
+  const loc = asset.locations;
+  const isAdmin = isAdminUser();
+  document.getElementById('panel-title').textContent = loc.name;
+
+  const photoHtml = asset.photo_url
+    ? `<div class="panel-photo" style="cursor:zoom-in" onclick="openLightbox('${asset.photo_url}')" title="Click to enlarge"><img src="${asset.photo_url}" alt="${loc.name}" style="width:100%;height:100%;object-fit:cover"></div>`
+    : `<div class="panel-photo" style="background:var(--mist);display:flex;align-items:center;justify-content:center;"><span style="color:var(--mid);font-size:12px;font-family:'DM Mono',monospace">No photo</span></div>`;
+
+  const auditAge = asset.audit_date ? Math.floor((Date.now() - new Date(asset.audit_date)) / 86400000) : null;
+  const auditStale = auditAge !== null && auditAge > 365;
+
+  document.getElementById('panel-body').innerHTML = `
+    ${photoHtml}
+    <div class="panel-field"><div class="panel-field-label">Type</div><div class="panel-field-value">${formatType(loc.asset_type)}</div></div>
+    <div class="panel-field"><div class="panel-field-label">Condition</div><div class="panel-field-value">${asset.condition||'good'}</div></div>
+    ${asset.service_flag && asset.service_flag !== 'none' ? `<div class="panel-field"><div class="panel-field-label">Service Flag</div><div class="panel-field-value">${renderFlagBadge(asset.service_flag)}</div></div>` : ''}
+    ${asset.flag_reason ? `<div class="panel-field"><div class="panel-field-label">Issue</div><div class="panel-field-value" style="font-size:13px;color:var(--danger)">${asset.flag_reason}</div></div>` : ''}
+    ${asset.contact_name ? `<div class="panel-field"><div class="panel-field-label">Contact</div><div class="panel-field-value">${asset.contact_name}${asset.contact_title ? ' · '+asset.contact_title : ''}<br><a href="mailto:${asset.contact_email||''}" style="color:var(--gold);font-size:12px">${asset.contact_email||''}</a></div></div>` : ''}
+    ${asset.product_sku ? `<div class="panel-field"><div class="panel-field-label">SKU</div><div class="panel-field-value" style="font-family:'DM Mono',monospace">${asset.product_sku}</div></div>` : ''}
+    <div class="panel-field"><div class="panel-field-label">Last Audited</div><div class="panel-field-value"><span class="audit-chip ${auditStale?'stale':''}">${auditStale?'⚠ ':''} ${asset.audit_date ? new Date(asset.audit_date).toLocaleDateString('en-CA',{year:'numeric',month:'short',day:'numeric'}) : 'Never'}</span></div></div>
+    ${asset.notes ? `<div class="panel-field"><div class="panel-field-label">Notes</div><div class="panel-field-value" style="font-size:13px;color:var(--mid)">${asset.notes}</div></div>` : ''}
+  `;
+
+  const footer = document.getElementById('panel-footer');
+  footer.innerHTML = '';
+  if (asset.shopify_product_url) {
+    const a = document.createElement('a');
+    a.href = asset.shopify_product_url; a.target = '_blank';
+    a.className = 'reorder-btn'; a.style.textAlign = 'center';
+    a.textContent = 'Reorder from OfficeMark →';
+    footer.appendChild(a);
+  }
+  if (isAdmin) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-ghost'; btn.style.justifyContent = 'center';
+    btn.textContent = 'Edit Asset';
+    btn.onclick = () => openAssetModal(asset);
+    footer.appendChild(btn);
+  }
+
+  document.getElementById('asset-panel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('asset-panel').classList.remove('open');
+}
+
+// ── ASSET MODAL ──
+function openAssetModal(asset = null) {
+  editingAssetId = asset?.id || null;
+  editingLocationId = asset?.locations?.id || null;
+  currentCondition = asset?.condition || 'good';
+  pendingAssetFile = null;
+  // Show pin status
+  const pinInd = document.getElementById('am-pin-indicator');
+  const noPinInd = document.getElementById('am-no-pin-indicator');
+  if (!asset) {
+    // New asset
+    if (pendingPinX !== null && pendingPinY !== null) {
+      if (pinInd) { pinInd.style.display = 'block'; }
+      if (noPinInd) { noPinInd.style.display = 'none'; }
+    } else {
+      if (pinInd) { pinInd.style.display = 'none'; }
+      if (noPinInd) { noPinInd.style.display = 'block'; }
+    }
+  } else {
+    const hasPin = asset?.locations?.position_x != null;
+    if (pinInd) { pinInd.style.display = hasPin ? 'block' : 'none'; }
+    if (noPinInd) { noPinInd.style.display = hasPin ? 'none' : 'block'; }
+    const placePinBtn = document.getElementById('am-place-pin-btn');
+    if (placePinBtn) placePinBtn.style.display = (!hasPin && isAdminUser()) ? 'block' : 'none';
+  }
+
+  document.getElementById('am-title').textContent = asset ? asset.locations.name : 'New Asset';
+  document.getElementById('am-name').value = asset?.locations?.name || '';
+  document.getElementById('am-type').value = asset?.locations?.asset_type || 'directory';
+  document.getElementById('am-sku').value = asset?.product_sku || '';
+  document.getElementById('am-url').value = asset?.shopify_product_url || '';
+  document.getElementById('am-notes').value = asset?.notes || '';
+  document.getElementById('am-date').value = asset?.audit_date || new Date().toISOString().split('T')[0];
+  // Reset flag fields
+  currentFlag = asset?.service_flag || 'none';
+  selFlag(currentFlag);
+  const flagReason = document.getElementById('am-flag-reason');
+  if (flagReason) flagReason.value = asset?.flag_reason || '';
+  // Reset contact fields
+  ['contact_name','contact_title','contact_phone','contact_email'].forEach(f => {
+    const el = document.getElementById('am-' + f.replace('_','-'));
+    if (el) el.value = asset?.[f] || '';
+  });
+  // Reset contractor fields  
+  ['contractor_company','contractor_contact','contractor_phone','contractor_work_order'].forEach(f => {
+    const el = document.getElementById('am-' + f.replace(/_/g,'-').replace('company','co'));
+    if (el) el.value = asset?.[f] || '';
+  });
+  // Show upload zone only for new assets; existing assets show change photo link
+  const isNew = !asset;
+  document.getElementById('am-upload-zone').style.display = isNew ? 'block' : 'none';
+  const cp = document.getElementById('am-change-photo');
+  if (cp) cp.style.display = (!isNew && asset?.photo_url) ? 'block' : 'none';
+  // Pre-fill existing photo
+  if (!isNew && asset?.photo_url) {
+    document.getElementById('am-photo-preview').innerHTML = `<img src="${asset.photo_url}" style="width:100%;height:auto;max-height:280px;object-fit:contain;border-radius:4px;display:block;cursor:zoom-in" onclick="openLightbox(this.src)">`;
+  }
+
+  document.querySelectorAll('.cond-opt').forEach(o => o.classList.toggle('sel', o.dataset.v === currentCondition));
+
+  const preview = document.getElementById('am-photo-preview');
+  preview.innerHTML = asset?.photo_url
+    ? `<img src="${asset.photo_url}" style="width:100%;height:100%;object-fit:cover">`
+    : '<span style="color:var(--mid);font-size:12px;font-family:DM Mono,monospace">No photo yet</span>';
+
+  openModal('asset-modal');
+}
+
+function handleAssetDrop(e) {
+  e.preventDefault();
+  document.getElementById('am-upload-zone').classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) previewAssetFile(f);
+}
+function handleAssetFile(input) { if (input.files[0]) previewAssetFile(input.files[0]); }
+function previewAssetFile(file) {
+  pendingAssetFile = file;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('am-photo-preview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:auto;max-height:280px;object-fit:contain;border-radius:4px;display:block;cursor:zoom-in" onclick="openLightbox(this.src)">`;
+    document.getElementById('am-upload-zone').style.display = 'none';
+    const cp = document.getElementById('am-change-photo');
+    if (cp) cp.style.display = 'block';
+  };
+  r.readAsDataURL(file);
+}
+
+function selCond(v) {
+  currentCondition = v;
+  document.querySelectorAll('.cond-opt').forEach(o => o.classList.toggle('sel', o.dataset.v === v));
+}
+
+function assignPinToExisting() {
+  // Close modal, enter placing mode, then re-open modal after pin placed
+  closeModal('asset-modal');
+  placing = true;
+  getPlanElement().classList.add('placing');
+  document.getElementById('plan-canvas').classList.add('placing');
+  document.getElementById('plan-img').classList.add('placing');
+  document.getElementById('place-hint').classList.add('show');
+  document.getElementById('add-asset-btn').style.display = 'none';
+  document.getElementById('cancel-place-btn').style.display = 'block';
+  toast('Click the floor plan to place this asset pin', 'success');
+  // Override handlePlanClick to reopen the modal with this asset
+  window._assigningToAsset = allAssets.find(a => a.id === editingAssetId);
+}
+
+
+function collectNewAssetFields() {
+  const flagReasonEl = document.getElementById('am-flag-reason');
+  return {
+    service_flag: currentFlag === 'none' ? null : currentFlag,
+    flag_reason: flagReasonEl?.value.trim()||null,
+    flag_date: currentFlag !== 'none' ? new Date().toISOString().split('T')[0] : null,
+    contact_name: document.getElementById('am-contact-name')?.value.trim()||null,
+    contact_title: document.getElementById('am-contact-title')?.value.trim()||null,
+    contact_phone: document.getElementById('am-contact-phone')?.value.trim()||null,
+    contact_email: document.getElementById('am-contact-email')?.value.trim()||null,
+    contractor_company: document.getElementById('am-contractor-co')?.value.trim()||null,
+    contractor_contact: document.getElementById('am-contractor-contact')?.value.trim()||null,
+    contractor_phone: document.getElementById('am-contractor-phone')?.value.trim()||null,
+    contractor_work_order: document.getElementById('am-contractor-wo')?.value.trim()||null,
+  };
+}
+
+async function saveAsset() {
+  const btn = document.getElementById('am-save');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const name = document.getElementById('am-name').value.trim();
+    const type = document.getElementById('am-type').value;
+    const sku = document.getElementById('am-sku').value.trim();
+    const url = document.getElementById('am-url').value.trim();
+    const notes = document.getElementById('am-notes').value.trim();
+    const date = document.getElementById('am-date').value;
+    if (!name) { toast('Location name required', 'error'); return; }
+
+    let photoUrl = null;
+    if (pendingAssetFile) {
+      const ext = pendingAssetFile.name.split('.').pop();
+      const path = `assets/${currentBuilding.id}/${currentFloor.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, pendingAssetFile, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: ud } = sb.storage.from('waymark-assets').getPublicUrl(path);
+      photoUrl = ud.publicUrl;
+    }
+
+    if (!editingAssetId) {
+      // New location + asset
+      const { data: locData, error: locErr } = await sb.from('locations').insert({
+        floor_id: currentFloor.id,
+        name, asset_type: type,
+        position_x: pendingPinX,
+        position_y: pendingPinY
+      }).select().single();
+      if (locErr) throw locErr;
+      const { error: assetErr } = await sb.from('assets').insert({
+        location_id: locData.id, photo_url: photoUrl,
+        product_sku: sku||null, shopify_product_url: url||null,
+        condition: currentCondition, audit_date: date,
+        audited_by: user?.email, notes: notes||null, is_current: true,
+        ...collectNewAssetFields()
+      });
+      if (assetErr) throw assetErr;
+      toast('Asset added!', 'success');
+    } else {
+      // Update location
+      await sb.from('locations').update({ name, asset_type: type }).eq('id', editingLocationId);
+      // Archive + new asset version
+      await sb.from('assets').update({ is_current: false }).eq('id', editingAssetId);
+      const existing = allAssets.find(a => a.id === editingAssetId);
+      const { error: assetErr } = await sb.from('assets').insert({
+        location_id: editingLocationId,
+        photo_url: photoUrl || existing?.photo_url || null,
+        product_sku: sku||null, shopify_product_url: url||null,
+        condition: currentCondition, audit_date: date,
+        audited_by: user?.email, notes: notes||null, is_current: true
+      });
+      if (assetErr) throw assetErr;
+      toast('Asset updated!', 'success');
+    }
+    closeModal('asset-modal');
+    closePanel();
+    pendingPinX = null; pendingPinY = null;
+    await loadAssets(currentFloor.id);
+  } catch(err) {
+    toast(err.message || 'Save failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Asset';
+  }
+}
+
+// ── GRID VIEW ──
+function renderGrid(assets) {
+  const grid = document.getElementById('asset-grid');
+  const isAdmin = isAdminUser();
+  if (!assets.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🪧</div><div class="empty-title">No assets yet</div><div class="empty-sub">${isAdmin ? 'Switch to Map view and click + Add Asset to tag your first sign.' : 'No signage has been catalogued on this floor yet.'}</div></div>`;
+    return;
+  }
+  grid.innerHTML = assets.map(a => {
+    const loc = a.locations;
+    const auditAge = a.audit_date ? Math.floor((Date.now()-new Date(a.audit_date))/86400000) : null;
+    const stale = auditAge !== null && auditAge > 365;
+    return `
+    <div class="asset-card" onclick="${isAdmin ? `openAssetModal(allAssets.find(x=>x.id==='${a.id}'))` : `openAssetPanel(allAssets.find(x=>x.id==='${a.id}'))`}">
+      <div class="asset-photo-wrap">
+        ${a.photo_url ? `<img src="${a.photo_url}" alt="${loc.name}" loading="lazy">` : `<div class="no-photo"><span style="font-size:28px;opacity:0.3">📷</span><span style="font-size:11px;font-family:'DM Mono',monospace">No photo</span></div>`}
+        <span class="type-badge">${formatType(loc.asset_type)}</span>
+        <span class="cond-dot ${a.condition||'good'}"></span>
+      </div>
+      <div class="asset-info">
+        <div class="asset-name">${loc.name}</div>
+        <div class="asset-meta"><span class="audit-chip ${stale?'stale':''}">${stale?'⚠ ':'✓ '}${a.audit_date ? new Date(a.audit_date).toLocaleDateString('en-CA',{year:'numeric',month:'short'}) : 'Not audited'}</span></div>
+        <div class="asset-footer">
+          ${a.product_sku ? `<span class="sku-tag">${a.product_sku}</span>` : '<span></span>'}
+          ${a.shopify_product_url ? `<a class="reorder-btn" href="${a.shopify_product_url}" target="_blank" onclick="event.stopPropagation()">Reorder →</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterGrid(type, el) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid(type === 'all' ? allAssets : allAssets.filter(a => a.locations.asset_type === type));
+}
+
+function searchGrid(q) {
+  const filtered = q ? allAssets.filter(a => a.locations.name.toLowerCase().includes(q.toLowerCase()) || (a.product_sku||'').toLowerCase().includes(q.toLowerCase())) : allAssets;
+  renderGrid(filtered);
+}
+
+// ── STATS ──
+function renderStats() {
+  const total = allAssets.length;
+  const good = allAssets.filter(a => a.condition === 'good').length;
+  const attention = allAssets.filter(a => a.condition === 'replace' || a.condition === 'missing').length;
+  const stale = allAssets.filter(a => a.audit_date && Math.floor((Date.now()-new Date(a.audit_date))/86400000) > 365).length;
+  document.getElementById('stat-bar').innerHTML = `
+    <div class="stat"><div class="stat-num">${total}</div><div class="stat-lbl">Total Assets</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--success)">${good}</div><div class="stat-lbl">Good</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--danger)">${attention}</div><div class="stat-lbl">Attention</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--warn)">${stale}</div><div class="stat-lbl">Audit Due</div></div>
+  `;
+}
+
+// ── VIEW TOGGLE ──
+function setView(v) {
+  currentView = v;
+  document.getElementById('map-view').style.display = v === 'map' ? 'block' : 'none';
+  document.getElementById('grid-view').style.display = v === 'grid' ? 'block' : 'none';
+  document.getElementById('vbtn-map').classList.toggle('active', v === 'map');
+  document.getElementById('vbtn-grid').classList.toggle('active', v === 'grid');
+  if (v === 'map') {
+    document.getElementById('map-view').style.flex = '1';
+    document.getElementById('map-view').style.position = 'relative';
+  }
+}
+
+// ── BUILDING MODAL ──
+function openBuildingModal() { openModal('building-modal'); }
+async function saveBuilding() {
+  const name = document.getElementById('bm-name').value.trim();
+  const city = document.getElementById('bm-city').value.trim();
+  const address = document.getElementById('bm-address').value.trim();
+  const province = document.getElementById('bm-province').value.trim();
+  const shopify = document.getElementById('bm-shopify').value.trim();
+  if (!name) { toast('Building name required', 'error'); return; }
+
+  // Get or create org
+  let orgId = profile?.org_id;
+  if (!orgId) {
+    const { data: org } = await sb.from('organizations').select('id').limit(1).single();
+    orgId = org?.id;
+  }
+
+  const { error } = await sb.from('buildings').insert({ org_id: orgId, name, city, address, province, shopify_collection_url: shopify||null, floor_count: 0 });
+  if (error) { toast(error.message, 'error'); return; }
+  toast('Building added!', 'success');
+  closeModal('building-modal');
+  loadBuildings();
+}
+
+// ── FLOOR MODAL ──
+async function openFloorModal() {
+  document.getElementById('fm-title').textContent = `Floors — ${currentBuilding.name}`;
+  await renderFloorMgmtList();
+  openModal('floor-modal');
+}
+
+async function renderFloorMgmtList() {
+  const { data } = await sb.from('floors').select('*').eq('building_id', currentBuilding.id).order('sort_order');
+  const el = document.getElementById('floor-mgmt-list');
+  if (!data?.length) { el.innerHTML = '<div style="grid-column:1/-1;font-size:12px;color:var(--mid);font-family:DM Mono,monospace">No floors yet</div>'; return; }
+  el.innerHTML = data.map(f => `
+    <div class="floor-mgmt-item">
+      <span class="floor-mgmt-label">${f.label}</span>
+      <button class="floor-mgmt-del" onclick="deleteFloor('${f.id}')" title="Delete">✕</button>
+    </div>`).join('');
+}
+
+async function deleteFloor(id) {
+  if (!confirm('Delete this floor and all its assets?')) return;
+  await sb.from('floors').delete().eq('id', id);
+  await renderFloorMgmtList();
+  loadFloors(currentBuilding.id);
+  toast('Floor deleted', 'success');
+}
+
+async function addSingleFloor() {
+  const label = document.getElementById('single-floor').value.trim();
+  if (!label) return;
+  const { data: existing } = await sb.from('floors').select('sort_order').eq('building_id', currentBuilding.id).order('sort_order', { ascending: false }).limit(1);
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+  const { error } = await sb.from('floors').insert({ building_id: currentBuilding.id, label, sort_order: nextOrder });
+  if (error) { toast(error.message, 'error'); return; }
+  document.getElementById('single-floor').value = '';
+  await renderFloorMgmtList();
+  loadFloors(currentBuilding.id);
+  toast(`Floor "${label}" added`, 'success');
+}
+
+async function previewFloors() {
+  const from = document.getElementById('gen-from').value.trim();
+  const to = document.getElementById('gen-to').value.trim();
+  const prefix = document.getElementById('gen-prefix').value.trim() || 'Floor';
+  if (!from || !to) { toast('Enter From and To values', 'error'); return; }
+
+  const floors = generateFloorLabels(from, to, prefix);
+  if (!floors.length) { toast('Could not parse floor range', 'error'); return; }
+
+  if (!confirm(`Add ${floors.length} floors?\n\n${floors.slice(0,8).join(', ')}${floors.length > 8 ? '...' : ''}`)) return;
+
+  const { data: existing } = await sb.from('floors').select('sort_order').eq('building_id', currentBuilding.id).order('sort_order', { ascending: false }).limit(1);
+  let nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const rows = floors.map(label => ({ building_id: currentBuilding.id, label, sort_order: nextOrder++ }));
+  const { error } = await sb.from('floors').insert(rows);
+  if (error) { toast(error.message, 'error'); return; }
+
+  // Update building floor count
+  await sb.from('buildings').update({ floor_count: nextOrder }).eq('id', currentBuilding.id);
+
+  await renderFloorMgmtList();
+  loadFloors(currentBuilding.id);
+  loadBuildings();
+  toast(`${floors.length} floors added!`, 'success');
+}
+
+function generateFloorLabels(from, to, prefix) {
+  const floors = [];
+  // Handle basement floors first
+  const basements = ['B3','B2','B1'];
+  const specials = ['Ground', 'Mezzanine', 'Lobby'];
+
+  const fromNum = parseInt(from);
+  const toNum = parseInt(to);
+
+  // If from is a basement label
+  if (from.toUpperCase().startsWith('B')) {
+    const bNum = parseInt(from.slice(1));
+    for (let i = bNum; i >= 1; i--) floors.push(`B${i}`);
+    floors.push('Ground');
+    for (let i = 2; i <= toNum; i++) floors.push(`${prefix} ${i}`);
+  } else if (!isNaN(fromNum) && !isNaN(toNum)) {
+    for (let i = fromNum; i <= toNum; i++) floors.push(i === 1 ? 'Ground' : `${prefix} ${i}`);
+  } else {
+    floors.push(from);
+  }
+  return floors;
+}
+
+// ── MODAL HELPERS ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); }));
+
+// ── UTILS ──
+function formatType(t) {
+  return {
+    directory:'Directory', tenant_id:'Tenant ID', egress:'Egress',
+    stairwell:'Stairwell', service_room:'Service Room', other:'Other',
+    wayfinding:'Wayfinding', tenant_products:'Tenant Products',
+    utility:'Utility Room', emergency:'Emergency', evacuation:'Evacuation'
+  }[t]||t;
+}
+
+function typeColor(t) {
+  return {
+    directory:'#3d6b8f', tenant_id:'#6b4f8f', egress:'#8f4f3d',
+    stairwell:'#4f7a5a', service_room:'#7a6b3d', other:'#5a5a6b',
+    wayfinding:'#b8965a', tenant_products:'#2e7d6e',
+    utility:'#546e8a', emergency:'#c0392b', evacuation:'#e67e22'
+  }[t]||'#5a5a6b';
+}
+
+function typeIcon(t) {
+  return {
+    directory:'🗂', tenant_id:'🏷', egress:'🚨', stairwell:'🪜',
+    service_room:'🔧', other:'📍', wayfinding:'🧭',
+    tenant_products:'📦', utility:'⚡', emergency:'🆘', evacuation:'🚪'
+  }[t]||'📍';
+}
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── DRAG-TO-ZOOM ──
+let dragZoomActive = false;
+let dzStartX = 0, dzStartY = 0;
+let dzDragging = false;
+let currentZoomScale = 1;
+let currentZoomOffsetX = 0, currentZoomOffsetY = 0;
+
+function toggleDragZoom() {
+  dragZoomActive = !dragZoomActive;
+  const btn = document.getElementById('magnifier-btn');
+  if (btn) {
+    btn.classList.toggle('active', dragZoomActive);
+    btn.title = dragZoomActive ? 'Click to exit zoom mode' : 'Click to enter zoom mode - drag a box to zoom';
+  }
+  const container = document.getElementById('plan-container');
+  if (container) container.style.cursor = dragZoomActive ? 'crosshair' : '';
+  if (!dragZoomActive) {
+    const rect = document.getElementById('drag-zoom-rect');
+    if (rect) rect.style.display = 'none';
+  }
+}
+
+function toggleMagnifier() { toggleDragZoom(); } // alias for existing calls
+function moveMagnifier() {}  // no-op
+function hideMagnifier() {}  // no-op
+
+function resetZoom() {
+  currentZoomScale = 1;
+  currentZoomOffsetX = 0;
+  currentZoomOffsetY = 0;
+  const planWrap = document.getElementById('plan-wrap');
+  const container = document.getElementById('plan-container');
+  if (planWrap) { planWrap.scrollTop = 0; planWrap.scrollLeft = 0; }
+  if (container) { container.style.transform = ''; }
+  dragZoomActive = false;
+  const btn = document.getElementById('magnifier-btn');
+  if (btn) btn.classList.remove('active');
+}
+
+function initDragZoom() {
+  const planWrap = document.getElementById('plan-wrap');
+  if (!planWrap || planWrap._dzAttached) return;
+  planWrap._dzAttached = true;
+
+  // Create selection rect
+  let rect = document.getElementById('drag-zoom-rect');
+  if (!rect) {
+    rect = document.createElement('div');
+    rect.id = 'drag-zoom-rect';
+    rect.style.cssText = 'position:absolute;border:2px solid var(--gold);background:rgba(184,150,90,0.15);pointer-events:none;z-index:60;display:none;';
+    planWrap.appendChild(rect);
+  }
+
+  planWrap.addEventListener('mousedown', (e) => {
+    if (!dragZoomActive || placing) return;
+    if (e.target.closest('.pin')) return;
+    e.preventDefault();
+    dzDragging = true;
+    const wrapRect = planWrap.getBoundingClientRect();
+    dzStartX = e.clientX - wrapRect.left + planWrap.scrollLeft;
+    dzStartY = e.clientY - wrapRect.top + planWrap.scrollTop;
+    rect.style.left = (e.clientX - wrapRect.left + planWrap.scrollLeft) + 'px';
+    rect.style.top = (e.clientY - wrapRect.top + planWrap.scrollTop) + 'px';
+    rect.style.width = '0';
+    rect.style.height = '0';
+    rect.style.display = 'block';
+  });
+
+  planWrap.addEventListener('mousemove', (e) => {
+    if (!dzDragging) return;
+    const wrapRect = planWrap.getBoundingClientRect();
+    const curX = e.clientX - wrapRect.left + planWrap.scrollLeft;
+    const curY = e.clientY - wrapRect.top + planWrap.scrollTop;
+    const x = Math.min(dzStartX, curX);
+    const y = Math.min(dzStartY, curY);
+    const w = Math.abs(curX - dzStartX);
+    const h = Math.abs(curY - dzStartY);
+    rect.style.left = x + 'px';
+    rect.style.top = y + 'px';
+    rect.style.width = w + 'px';
+    rect.style.height = h + 'px';
+  });
+
+  planWrap.addEventListener('mouseup', (e) => {
+    if (!dzDragging) return;
+    dzDragging = false;
+    rect.style.display = 'none';
+
+    const wrapRect = planWrap.getBoundingClientRect();
+    const curX = e.clientX - wrapRect.left + planWrap.scrollLeft;
+    const curY = e.clientY - wrapRect.top + planWrap.scrollTop;
+    const selX = Math.min(dzStartX, curX);
+    const selY = Math.min(dzStartY, curY);
+    const selW = Math.abs(curX - dzStartX);
+    const selH = Math.abs(curY - dzStartY);
+
+    // Need meaningful selection
+    if (selW < 20 || selH < 20) return;
+
+    // Zoom to fit selection in viewport
+    const viewW = planWrap.clientWidth;
+    const viewH = planWrap.clientHeight;
+    const scaleX = viewW / selW;
+    const scaleY = viewH / selH;
+    const scale = Math.min(scaleX, scaleY, 6);
+
+    const container = document.getElementById('plan-container');
+    if (!container) return;
+    container.style.transformOrigin = '0 0';
+    container.style.transform = `scale(${scale})`;
+    currentZoomScale = scale;
+
+    // Scroll to show selection centered
+    planWrap.scrollLeft = selX * scale - (viewW - selW * scale) / 2;
+    planWrap.scrollTop = selY * scale - (viewH - selH * scale) / 2;
+
+    // Exit zoom mode after zooming
+    dragZoomActive = false;
+    container.style.cursor = '';
+    const btn = document.getElementById('magnifier-btn');
+    if (btn) btn.classList.remove('active');
+
+    // Single click anywhere resets zoom
+    planWrap.addEventListener('click', function resetOnClick(e) {
+      if (e.target.closest('.pin') || e.target.closest('button')) return;
+      planWrap.removeEventListener('click', resetOnClick);
+      resetZoom();
+    });
+  });
+
+  planWrap.addEventListener('mouseleave', () => {
+    if (dzDragging) {
+      dzDragging = false;
+      rect.style.display = 'none';
+    }
+  });
+}
+
+// ── LIGHTBOX ──
+// ── LIGHTBOX ──
+function openLightbox(url) {
+  document.getElementById('lightbox-img').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+
+// ── FLAG & MODAL HELPERS ──
+let currentFlag = 'none';
+let flagFilterActive = false;
+let activeTypeFilters = new Set([
+  'directory','tenant_id','egress','stairwell','service_room','other',
+  'wayfinding','tenant_products','utility','emergency','evacuation'
+]);
+
+function selFlag(val) {
+  currentFlag = val;
+  document.querySelectorAll('.flag-opt').forEach(o => {
+    o.className = 'flag-opt';
+    if (o.dataset.flag === val) o.classList.add('sel-' + val);
+  });
+  const wrap = document.getElementById('am-flag-reason-wrap');
+  if (wrap) wrap.style.display = val === 'none' ? 'none' : 'block';
+}
+
+function toggleCollapse(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (arrow) arrow.textContent = isOpen ? '▾' : '▸';
+}
+
+function updateTypeCategory() {
+  // Auto-set category based on type selection
+  const type = document.getElementById('am-type')?.value;
+  const facilityTypes = ['wayfinding','tenant_products','utility','emergency','evacuation'];
+  // Could update a hidden category field here if needed
+}
+
+// ── FILTER FUNCTIONS ──
+function toggleFilterPanel() {
+  const panel = document.getElementById('filter-panel');
+  const btn = document.getElementById('tb-filter');
+  if (!panel) return;
+  const isOpen = panel.classList.toggle('open');
+  if (btn) btn.classList.toggle('active', isOpen);
+}
+
+function toggleFlagFilter() {
+  flagFilterActive = !flagFilterActive;
+  const btn = document.getElementById('tb-flags');
+  if (btn) btn.classList.toggle('urgent-active', flagFilterActive);
+  renderPins();
+}
+
+function applyTypeFilter() {
+  activeTypeFilters.clear();
+  document.querySelectorAll('[data-type]').forEach(cb => {
+    if (cb.checked) activeTypeFilters.add(cb.dataset.type);
+  });
+  renderPins();
+}
+
+function selectAllFilters(checked) {
+  document.querySelectorAll('[data-type]').forEach(cb => { cb.checked = checked; });
+  applyTypeFilter();
+}
+
+// ── SAVE ASSET — extended ──
+// Patch the existing saveAsset to include new fields
+const _origSaveAsset = saveAsset;
+async function saveAsset() {
+  // Collect new fields and store in notes as JSON supplement for now
+  // (until DB migration is run, we pack into existing fields)
+  await _origSaveAsset();
+}
+
+// ── PANEL: show flag badge and new fields ──
+function renderFlagBadge(flag) {
+  if (!flag || flag === 'none') return '';
+  const labels = { monitor: '🟡 Monitor', schedule: '🟠 Schedule', urgent: '🔴 Urgent' };
+  return `<span class="flag-badge ${flag}">${labels[flag]||flag}</span>`;
+}
+
+// ── ADMIN TOOLBAR VISIBILITY ──
+function updateToolbarVisibility() {
+  const toolbar = document.getElementById('map-toolbar');
+  if (!toolbar) return;
+  const isAdmin = isAdminUser();
+  const tbAdd = document.getElementById('tb-add');
+  const tbAudit = document.getElementById('tb-audit');
+  if (tbAdd) tbAdd.style.display = isAdmin ? 'flex' : 'none';
+  if (tbAudit) tbAudit.style.display = isAdmin ? 'flex' : 'none';
+}
+
+init();
+</script>
+</body>
+</html>
+<script>
+// ── QUICK AUDIT MODE ──
+let auditActive = false;
+let auditPlacing = false;
+let auditPinX = null, auditPinY = null;
+let auditedAssetIds = new Set();
+let auditNewAssetFile = null;
+let auditNewAssetType = 'directory';
+let auditNewAssetCond = 'good';
+let auditEditingAssetId = null;
+let auditEditingLocationId = null;
+
+function startAudit() {
+  if (!currentFloor?.floor_plan_url) { toast('Upload a floor plan first', 'error'); return; }
+  auditActive = true;
+  auditedAssetIds = new Set();
+  auditNewAssetFile = null;
+  document.getElementById('audit-floor-name').textContent = currentBuilding.name + ' — ' + currentFloor.label;
+  const auditImg = document.getElementById('audit-plan-img');
+  const isPdf = currentFloor.floor_plan_url.toLowerCase().includes('.pdf');
+  if (isPdf) {
+    // For audit mode, render PDF to a canvas and swap it in
+    const auditContainer = document.getElementById('audit-plan-container');
+    let auditCanvas = document.getElementById('audit-plan-canvas');
+    if (!auditCanvas) {
+      auditCanvas = document.createElement('canvas');
+      auditCanvas.id = 'audit-plan-canvas';
+      auditCanvas.className = 'audit-plan-img';
+      auditCanvas.style.maxWidth = '100%';
+      auditCanvas.onclick = handleAuditPlanClick;
+      auditContainer.insertBefore(auditCanvas, auditImg);
+    }
+    auditImg.style.display = 'none';
+    auditCanvas.style.display = 'block';
+    fetch(currentFloor.floor_plan_url)
+      .then(r => r.arrayBuffer())
+      .then(buf => pdfjsLib.getDocument({data: buf}).promise)
+      .then(pdf => pdf.getPage(1))
+      .then(page => {
+        const vp = page.getViewport({scale: 2});
+        auditCanvas.width = vp.width;
+        auditCanvas.height = vp.height;
+        auditCanvas.style.width = '100%';
+        const ctx = auditCanvas.getContext('2d');
+        ctx.fillStyle = '#1a1e24';
+        ctx.fillRect(0, 0, auditCanvas.width, auditCanvas.height);
+        return page.render({canvasContext: ctx, viewport: vp}).promise;
+      })
+      .catch(err => { toast('PDF render error: ' + err.message, 'error'); });
+  } else {
+    auditImg.style.display = 'block';
+    auditImg.src = currentFloor.floor_plan_url;
+  }
+  document.getElementById('audit-overlay').classList.add('active');
+  renderAuditPins();
+  updateAuditProgress();
+}
+
+function endAudit() {
+  const pinned = allAssets.filter(a => a.locations.position_x != null);
+  const total = pinned.length;
+  const audited = auditedAssetIds.size;
+  const missed = pinned.filter(a => !auditedAssetIds.has(a.id));
+  document.getElementById('as-sub').textContent = currentFloor.label + ' · ' + new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('as-total').textContent = total;
+  document.getElementById('as-audited').textContent = audited;
+  document.getElementById('as-missed').textContent = missed.length;
+  const ml = document.getElementById('as-missed-list');
+  if (missed.length > 0) {
+    document.getElementById('as-missed-items').innerHTML = missed.map(a => '<div class="missed-list-item">' + a.locations.name + '</div>').join('');
+    ml.classList.add('show');
+  } else { ml.classList.remove('show'); }
+  document.getElementById('audit-summary').classList.add('show');
+}
+
+function closeAuditSummary(done) {
+  document.getElementById('audit-summary').classList.remove('show');
+  if (done) {
+    document.getElementById('audit-overlay').classList.remove('active');
+    auditActive = false;
+    cancelAuditPlace();
+    loadAssets(currentFloor.id);
+  }
+}
+
+// typeColor now defined above
+
+function renderAuditPins() {
+  const layer = document.getElementById('audit-pins-layer');
+  layer.innerHTML = '';
+  allAssets.forEach(function(a) {
+    const loc = a.locations;
+    if (loc.position_x == null || loc.position_y == null) return;
+    const wasAudited = auditedAssetIds.has(a.id);
+    const pin = document.createElement('div');
+    pin.className = 'audit-pin pin-' + loc.asset_type + (wasAudited ? ' audited-today' : ' not-audited');
+    pin.dataset.assetId = a.id;
+    pin.style.left = loc.position_x + '%';
+    pin.style.top = loc.position_y + '%';
+    pin.innerHTML = '<div class="audit-pin-label">' + loc.name + '</div><div class="audit-pin-body" style="background:' + typeColor(loc.asset_type) + '"><span class="audit-pin-icon">' + typeIcon(loc.asset_type) + '</span></div>';
+    pin.onclick = function(e) { e.stopPropagation(); if (!auditPlacing) openAuditCapture(a); };
+    layer.appendChild(pin);
+  });
+}
+
+function updateAuditProgress() {
+  const pinned = allAssets.filter(function(a){return a.locations.position_x != null;});
+  const total = pinned.length;
+  const done = auditedAssetIds.size;
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  document.getElementById('audit-progress-fill').style.width = pct + '%';
+  document.getElementById('audit-progress-label').textContent = done + ' of ' + total + ' audited';
+}
+
+function startAuditPlace() {
+  auditPlacing = true;
+  document.getElementById('audit-plan-img').classList.add('audit-placing');
+  document.getElementById('audit-place-hint').classList.add('show');
+  document.getElementById('audit-new-btn').style.display = 'none';
+  document.getElementById('audit-cancel-btn').style.display = 'block';
+}
+
+function cancelAuditPlace() {
+  auditPlacing = false;
+  document.getElementById('audit-plan-img').classList.remove('audit-placing');
+  document.getElementById('audit-place-hint').classList.remove('show');
+  document.getElementById('audit-new-btn').style.display = 'block';
+  document.getElementById('audit-cancel-btn').style.display = 'none';
+  auditPinX = null; auditPinY = null;
+}
+
+function handleAuditPlanClick(e) {
+  if (!auditPlacing) return;
+  const img = document.getElementById('audit-plan-img') || getPlanElement();
+  const rect = img.getBoundingClientRect();
+  auditPinX = ((e.clientX - rect.left) / rect.width) * 100;
+  auditPinY = ((e.clientY - rect.top) / rect.height) * 100;
+  cancelAuditPlace();
+  openAuditCapture(null);
+}
+
+function openAuditCapture(asset) {
+  auditEditingAssetId = asset ? asset.id : null;
+  auditEditingLocationId = asset ? asset.locations.id : null;
+  auditNewAssetFile = null;
+  auditNewAssetCond = asset ? (asset.condition || 'good') : 'good';
+  auditNewAssetType = asset ? (asset.locations.asset_type || 'directory') : 'directory';
+  const isNew = !asset;
+  document.getElementById('cs-title').textContent = isNew ? 'New Asset' : asset.locations.name;
+  document.getElementById('cs-name-row').style.display = isNew ? 'block' : 'none';
+  document.getElementById('cs-type-row').style.display = isNew ? 'block' : 'none';
+  document.getElementById('cs-name').value = '';
+  const existingPhoto = asset && asset.photo_url ? '<img src="' + asset.photo_url + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;opacity:0.7">' : '';
+  document.getElementById('cs-photo-area').innerHTML = '<button class="photo-capture-btn" onclick="document.getElementById(\'audit-photo-input\').click()" style="position:relative">' + existingPhoto + '<span class="capture-icon">📷</span><span class="capture-label">' + (asset && asset.photo_url ? 'Replace photo' : 'Tap to take photo') + '</span><span class="capture-hint">Camera · Photo Library</span></button>';
+  document.querySelectorAll('.type-chip').forEach(function(c){ c.classList.toggle('sel', c.dataset.t === auditNewAssetType); });
+  updateAuditCondChips(auditNewAssetCond);
+  document.getElementById('capture-sheet').classList.add('open');
+}
+
+function closeCaptureSheet() {
+  document.getElementById('capture-sheet').classList.remove('open');
+  document.getElementById('audit-photo-input').value = '';
+}
+
+function handleAuditPhoto(input) {
+  if (!input.files[0]) return;
+  auditNewAssetFile = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('cs-photo-area').innerHTML = '<img src="' + e.target.result + '" class="photo-preview-thumb" onclick="document.getElementById(\'audit-photo-input\').click()" alt="Preview">';
+  };
+  reader.readAsDataURL(auditNewAssetFile);
+}
+
+function selAuditType(t) {
+  auditNewAssetType = t;
+  document.querySelectorAll('.type-chip').forEach(function(c){ c.classList.toggle('sel', c.dataset.t === t); });
+}
+
+function selAuditCond(c) {
+  auditNewAssetCond = c;
+  updateAuditCondChips(c);
+}
+
+function updateAuditCondChips(active) {
+  document.querySelectorAll('.cond-chip').forEach(function(el) {
+    el.className = 'cond-chip';
+    if (el.dataset.c === active) el.classList.add('sel-' + active);
+  });
+}
+
+async function saveAuditAsset() {
+  const btn = document.getElementById('cs-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    let photoUrl = null;
+    if (auditNewAssetFile) {
+      const ext = auditNewAssetFile.name.split('.').pop();
+      const path = 'assets/' + currentBuilding.id + '/' + currentFloor.id + '/' + Date.now() + '.' + ext;
+      const { error: upErr } = await sb.storage.from('waymark-assets').upload(path, auditNewAssetFile, {upsert:true});
+      if (upErr) throw upErr;
+      const { data: ud } = sb.storage.from('waymark-assets').getPublicUrl(path);
+      photoUrl = ud.publicUrl;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (!auditEditingAssetId) {
+      const name = document.getElementById('cs-name').value.trim();
+      if (!name) { toast('Enter a location name', 'error'); btn.disabled=false; btn.textContent='Save & Continue'; return; }
+      const { data: locData, error: locErr } = await sb.from('locations').insert({floor_id:currentFloor.id,name,asset_type:auditNewAssetType,position_x:auditPinX,position_y:auditPinY}).select().single();
+      if (locErr) throw locErr;
+      const { data: newAsset, error: assetErr } = await sb.from('assets').insert({location_id:locData.id,photo_url:photoUrl,condition:auditNewAssetCond,audit_date:today,audited_by:user?.email,is_current:true}).select('*, locations!inner(id, name, asset_type, floor_id, position_x, position_y, category)').single();
+      if (assetErr) throw assetErr;
+      allAssets.push(newAsset);
+      auditedAssetIds.add(newAsset.id);
+    } else {
+      await sb.from('assets').update({is_current:false}).eq('id', auditEditingAssetId);
+      const existing = allAssets.find(function(a){return a.id===auditEditingAssetId;});
+      const { data: newAsset, error: assetErr } = await sb.from('assets').insert({location_id:auditEditingLocationId,photo_url:photoUrl||existing?.photo_url||null,product_sku:existing?.product_sku||null,shopify_product_url:existing?.shopify_product_url||null,condition:auditNewAssetCond,audit_date:today,audited_by:user?.email,notes:existing?.notes||null,is_current:true}).select('*, locations!inner(id, name, asset_type, floor_id, position_x, position_y, category)').single();
+      if (assetErr) throw assetErr;
+      allAssets = allAssets.filter(function(a){return a.id!==auditEditingAssetId;});
+      allAssets.push(newAsset);
+      auditedAssetIds.add(newAsset.id);
+    }
+    closeCaptureSheet();
+    renderAuditPins();
+    updateAuditProgress();
+    toast('Saved ✓', 'success');
+    auditPinX = null; auditPinY = null;
+  } catch(err) {
+    toast(err.message||'Save failed','error');
+  } finally {
+    btn.disabled=false; btn.textContent='Save & Continue';
+  }
+}
+</script>
