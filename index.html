@@ -654,7 +654,7 @@ input[type=file] { display:none; }
 <!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">Mark<span>View</span></div>
+    <div class="auth-logo">Way<span>Marks</span></div>
     <div class="auth-sub">Building Signage Passport</div>
     <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@company.com" autocomplete="email"></div>
     <div class="fg"><label>Password</label><input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password"></div>
@@ -666,7 +666,7 @@ input[type=file] { display:none; }
 <!-- APP -->
 <div id="app">
   <header>
-    <div class="logo">Mark<span>View</span></div>
+    <div class="logo">Way<span>Marks</span></div>
     <div class="header-right">
       <span class="user-badge" id="hdr-email"></span>
       <span class="role-tag" id="hdr-role"></span>
@@ -1577,9 +1577,9 @@ async function uploadFloorPlan(file) {
   toast('Uploading floor plan...', 'success');
   const ext = file.name.split('.').pop();
   const path = `plans/${currentBuilding.id}/${currentFloor.id}/plan.${ext}`;
-  const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, file, { upsert: true });
+  const { error: upErr } = await sb.storage.from('markview-assets').upload(path, file, { upsert: true });
   if (upErr) { toast('Upload failed: ' + upErr.message, 'error'); return; }
-  const { data: urlData } = sb.storage.from('waymarks-assets').getPublicUrl(path);
+  const { data: urlData } = sb.storage.from('markview-assets').getPublicUrl(path);
   const { error: dbErr } = await sb.from('floors').update({ floor_plan_url: urlData.publicUrl }).eq('id', currentFloor.id);
   if (dbErr) { toast('Database error: ' + dbErr.message, 'error'); return; }
   currentFloor.floor_plan_url = urlData.publicUrl;
@@ -1786,9 +1786,9 @@ async function saveAsset() {
     if (pendingAssetFile) {
       const ext = pendingAssetFile.name.split('.').pop();
       const path = `assets/${currentBuilding.id}/${currentFloor.id}/${Date.now()}.${ext}`;
-      const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, pendingAssetFile, { upsert: true });
+      const { error: upErr } = await sb.storage.from('markview-assets').upload(path, pendingAssetFile, { upsert: true });
       if (upErr) throw upErr;
-      const { data: ud } = sb.storage.from('waymarks-assets').getPublicUrl(path);
+      const { data: ud } = sb.storage.from('markview-assets').getPublicUrl(path);
       photoUrl = ud.publicUrl;
     }
 
@@ -2498,9 +2498,9 @@ async function saveAuditAsset() {
     if (auditNewAssetFile) {
       const ext = auditNewAssetFile.name.split('.').pop();
       const path = 'assets/' + currentBuilding.id + '/' + currentFloor.id + '/' + Date.now() + '.' + ext;
-      const { error: upErr } = await sb.storage.from('waymarks-assets').upload(path, auditNewAssetFile, {upsert:true});
+      const { error: upErr } = await sb.storage.from('markview-assets').upload(path, auditNewAssetFile, {upsert:true});
       if (upErr) throw upErr;
-      const { data: ud } = sb.storage.from('waymarks-assets').getPublicUrl(path);
+      const { data: ud } = sb.storage.from('markview-assets').getPublicUrl(path);
       photoUrl = ud.publicUrl;
     }
     const today = new Date().toISOString().split('T')[0];
