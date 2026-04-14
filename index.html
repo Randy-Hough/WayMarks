@@ -58,17 +58,18 @@ input:focus, select:focus, textarea:focus { border-color:var(--gold); box-shadow
 .btn-primary { width:100%; padding:12px; background:var(--steel); color:var(--paper); border:none; border-radius:var(--r); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; transition:background 0.15s; }
 .btn-primary:hover { background:var(--ink); }
 .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
-.btn-gold { background:var(--gold); color:white; border:none; border-radius:var(--r); padding:10px 20px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-gold { background:var(--gold); color:white; border:none; border-radius:var(--r); padding:6px 12px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; cursor:pointer; transition:background 0.15s; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .btn-gold:hover { background:var(--gold-lt); }
 .btn-gold:disabled { opacity:0.5; cursor:not-allowed; }
-.btn-ghost { background:transparent; border:1px solid var(--mist); color:var(--steel); border-radius:var(--r); padding:9px 18px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; }
+.btn-ghost { background:transparent; border:1px solid var(--mist); color:var(--steel); border-radius:var(--r); padding:5px 10px; font-family:'DM Sans',sans-serif; font-size:12px; cursor:pointer; transition:all 0.15s; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.btn-ghost.active { background:var(--steel); color:var(--paper); border-color:var(--steel); }
 .btn-ghost:hover { border-color:var(--steel); background:var(--mist); }
 .btn-danger { background:var(--danger); color:white; border:none; border-radius:var(--r); padding:9px 18px; font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; }
 .btn-sm-ghost { background:transparent; border:1px solid rgba(255,255,255,0.2); color:var(--paper); padding:6px 14px; border-radius:var(--r); cursor:pointer; font-size:12px; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
 .btn-sm-ghost:hover { background:rgba(255,255,255,0.08); }
 
 /* ── HEADER ── */
-header { background:var(--steel); color:var(--paper); display:flex; align-items:center; justify-content:space-between; padding:0 24px; height:54px; position:sticky; top:0; z-index:100; box-shadow:0 2px 16px rgba(0,0,0,0.2); }
+header { background:var(--steel); color:var(--paper); display:flex; align-items:center; justify-content:space-between; padding:0 16px; height:48px; position:sticky; top:0; z-index:100; box-shadow:0 2px 16px rgba(0,0,0,0.2); }
 .logo { font-family:'EB Garamond',serif; font-size:22px; letter-spacing:0.02em; }
 .logo span { color:var(--gold); }
 .header-right { display:flex; align-items:center; gap:12px; }
@@ -81,7 +82,8 @@ header { background:var(--steel); color:var(--paper); display:flex; align-items:
 
 /* ── LAYOUT ── */
 #app { display:none; }
-.app-layout { display:grid; grid-template-columns:240px 1fr; height:calc(100vh - 54px); overflow:hidden; }
+.app-layout { display:grid; grid-template-columns:240px 1fr; height:calc(100vh - 48px); overflow:hidden; transition:grid-template-columns 0.25s ease; }
+.app-layout.focus-mode { grid-template-columns:0 1fr; }
 
 /* ── SIDEBAR ── */
 .sidebar { background:var(--warm); border-right:1px solid var(--mist); display:flex; flex-direction:column; overflow:hidden; }
@@ -112,24 +114,30 @@ header { background:var(--steel); color:var(--paper); display:flex; align-items:
 /* ── MAIN ── */
 .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
-/* ── FLOOR HEADER ── */
-.floor-header { padding:12px 24px; border-bottom:1px solid var(--mist); display:flex; align-items:center; justify-content:space-between; background:var(--warm); flex-shrink:0; gap:12px; }
-.floor-header-left { display:flex; flex-direction:column; gap:2px; min-width:0; }
-.floor-title { font-family:'EB Garamond',serif; font-size:22px; color:var(--steel); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.floor-sub { font-size:11px; color:var(--mid); font-family:'DM Mono',monospace; }
+/* ── FLOOR BAR — single tight control row ── */
+.floor-bar { background:var(--warm); border-bottom:1px solid var(--mist); display:flex; align-items:center; gap:6px; padding:0 12px; height:42px; flex-shrink:0; overflow:hidden; }
+.floor-bar-title { font-family:'EB Garamond',serif; font-size:17px; color:var(--steel); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:80px; }
+.floor-bar-sub { font-size:10px; color:var(--mid); font-family:'DM Mono',monospace; white-space:nowrap; flex-shrink:0; }
+.tb-sep { width:1px; height:18px; background:var(--mist); flex-shrink:0; }
 
-/* ── STAT PILLS (replaces stat bar) ── */
-.stat-pills { display:flex; gap:6px; align-items:center; flex-shrink:0; }
-.stat-pill { display:flex; align-items:center; gap:5px; background:white; border:1px solid var(--mist); border-radius:20px; padding:4px 10px; font-family:'DM Mono',monospace; font-size:11px; color:var(--mid); white-space:nowrap; }
-.stat-pill-num { font-family:'EB Garamond',serif; font-size:16px; line-height:1; font-weight:500; }
-.stat-pill.loading { opacity:0.5; }
-
-.floor-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex-shrink:0; }
+/* ── STAT PILLS — compact ── */
+.stat-pills { display:flex; gap:4px; align-items:center; flex-shrink:0; }
+.stat-pill { display:flex; align-items:center; gap:4px; background:white; border:1px solid var(--mist); border-radius:20px; padding:3px 8px; font-family:'DM Mono',monospace; font-size:10px; color:var(--mid); white-space:nowrap; }
+.stat-pill-num { font-family:'EB Garamond',serif; font-size:13px; line-height:1; font-weight:500; }
+.stat-pill.loading { opacity:0.4; }
 
 /* ── VIEW TOGGLE ── */
-.view-toggle { display:flex; border:1px solid var(--mist); border-radius:var(--r); overflow:hidden; }
-.view-btn { padding:7px 14px; background:white; border:none; cursor:pointer; font-size:12px; color:var(--mid); font-family:'DM Mono',monospace; transition:all 0.12s; }
+.view-toggle { display:flex; border:1px solid var(--mist); border-radius:var(--r); overflow:hidden; flex-shrink:0; }
+.view-btn { padding:5px 10px; background:white; border:none; cursor:pointer; font-size:11px; color:var(--mid); font-family:'DM Mono',monospace; transition:all 0.12s; white-space:nowrap; }
 .view-btn.active { background:var(--steel); color:var(--paper); }
+
+/* ── ZOOM GROUP ── */
+.zoom-group { display:flex; align-items:center; border:1px solid var(--mist); border-radius:var(--r); overflow:hidden; background:white; flex-shrink:0; }
+.zoom-btn { background:transparent; border:none; cursor:pointer; padding:4px 7px; font-size:13px; color:var(--mid); transition:all 0.12s; line-height:1; }
+.zoom-btn:hover { background:var(--mist); color:var(--steel); }
+.zoom-btn.active-zoom { background:var(--steel); color:white; }
+.zoom-sep { width:1px; height:14px; background:var(--mist); }
+.zoom-lbl { font-size:10px; font-family:'DM Mono',monospace; color:var(--mid); padding:0 5px; min-width:32px; text-align:center; }
 
 /* ── FLOOR PLAN VIEW ── */
 .floor-plan-view { flex:1; overflow:auto; position:relative; background:#f0ede6; }
@@ -285,6 +293,40 @@ input[type=file] { display:none; }
 .floor-mgmt-label { font-family:'DM Mono',monospace; font-size:12px; flex:1; }
 .floor-mgmt-del { background:none; border:none; color:var(--mid); cursor:pointer; font-size:14px; }
 .floor-mgmt-del:hover { color:var(--danger); }
+
+/* ── FOCUS MODE ── */
+.sidebar { transition:transform 0.25s ease, opacity 0.25s ease; }
+.app-layout.focus-mode .sidebar { transform:translateX(-100%); opacity:0; pointer-events:none; }
+
+.focus-bar {
+  position:fixed; top:0; left:0; right:0; height:48px;
+  background:rgba(44,53,64,0.95); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:space-between;
+  padding:0 16px; z-index:150; box-shadow:0 2px 20px rgba(0,0,0,0.3);
+}
+.focus-bar.show { display:flex; }
+.focus-bar-left { display:flex; align-items:center; gap:10px; }
+.focus-bar-logo { font-family:'EB Garamond',serif; font-size:18px; color:var(--paper); }
+.focus-bar-logo span { color:var(--gold); }
+.focus-bar-floor { font-size:11px; color:rgba(255,255,255,0.6); font-family:'DM Mono',monospace; }
+.focus-bar-right { display:flex; align-items:center; gap:8px; }
+.focus-bar-exit { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:var(--paper); padding:5px 12px; border-radius:var(--r); font-size:11px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+.focus-bar-exit:hover { background:rgba(255,255,255,0.2); }
+
+.focus-btn { background:transparent; border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.6); padding:4px 8px; border-radius:var(--r); cursor:pointer; font-size:13px; transition:all 0.15s; line-height:1; }
+.focus-btn:hover { background:rgba(255,255,255,0.1); color:white; }
+.focus-btn.active { background:var(--gold); border-color:var(--gold); color:white; }
+
+/* ── TIER TAGS ── */
+.tier-tag { font-size:9px; font-weight:600; padding:2px 7px; border-radius:2px; letter-spacing:0.08em; text-transform:uppercase; font-family:'DM Mono',monospace; }
+.tier-free       { background:rgba(138,130,120,0.3); color:rgba(255,255,255,0.5); }
+.tier-building   { background:rgba(184,150,90,0.2); color:var(--gold-lt); border:1px solid rgba(184,150,90,0.3); }
+.tier-portfolio  { background:rgba(74,124,89,0.2); color:#8dd4a4; border:1px solid rgba(74,124,89,0.3); }
+.tier-enterprise { background:rgba(184,150,90,0.35); color:var(--gold-lt); border:1px solid var(--gold); }
+
+/* ── TIER NOTICE in sidebar ── */
+.tier-notice { margin:6px 4px 0; padding:7px 10px; border-radius:var(--r); background:rgba(184,150,90,0.07); border:1px solid rgba(184,150,90,0.18); font-size:10px; font-family:'DM Mono',monospace; color:var(--mid); text-align:center; line-height:1.5; }
+.tier-notice a { color:var(--gold); cursor:pointer; text-decoration:none; }
 
 @media(max-width:768px) {
   .app-layout { grid-template-columns:1fr; }
@@ -650,6 +692,18 @@ input[type=file] { display:none; }
   </div>
 </div>
 
+<!-- FOCUS BAR (floats over map in focus mode) -->
+<div class="focus-bar" id="focus-bar">
+  <div class="focus-bar-left">
+    <span class="focus-bar-logo">Way<span>Marks</span></span>
+    <span class="focus-bar-floor" id="focus-bar-floor"></span>
+  </div>
+  <div class="focus-bar-right">
+    <div class="stat-pills" id="focus-stat-pills" style="opacity:0.75"></div>
+    <button class="focus-bar-exit" onclick="exitFocusMode()">⊠ Exit&nbsp;<span style="opacity:0.5;font-size:10px">Esc</span></button>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
   <header>
@@ -657,6 +711,8 @@ input[type=file] { display:none; }
     <div class="header-right">
       <span class="user-badge" id="hdr-email"></span>
       <span class="role-tag" id="hdr-role"></span>
+      <span class="tier-tag" id="hdr-tier" style="display:none"></span>
+      <button class="focus-btn" id="focus-btn" onclick="toggleFocusMode()" title="Focus mode — full screen map">⛶</button>
       <button class="btn-sm-ghost" onclick="doLogout()">Sign Out</button>
     </div>
   </header>
@@ -673,6 +729,7 @@ input[type=file] { display:none; }
           <button id="add-building-btn" style="display:none" onclick="openBuildingModal()" title="Add building">+</button>
         </div>
         <div id="buildings-list"></div>
+        <div id="tier-building-notice" class="tier-notice" style="display:none"></div>
       </div>
 
       <div class="floor-section" id="floor-section" style="display:none">
@@ -681,6 +738,7 @@ input[type=file] { display:none; }
           <button id="manage-floors-btn" style="display:none" onclick="openFloorModal()" title="Manage floors">⚙</button>
         </div>
         <div class="floor-list" id="floor-list"></div>
+        <div id="tier-floor-notice" class="tier-notice" style="display:none"></div>
       </div>
     </aside>
 
@@ -695,45 +753,48 @@ input[type=file] { display:none; }
       <!-- FLOOR UI -->
       <div id="floor-ui" style="display:none; flex-direction:column; height:100%;">
 
-        <!-- FLOOR HEADER — now contains stat pills -->
-        <div class="floor-header">
-          <div class="floor-header-left">
-            <div class="floor-title" id="fl-title">Floor</div>
-            <div class="floor-sub" id="fl-sub"></div>
-          </div>
+        <!-- COMPACT FLOOR BAR — single tight row -->
+        <div class="floor-bar" id="floor-bar">
+          <div class="floor-bar-title" id="fl-title">Floor</div>
+          <div class="floor-bar-sub" id="fl-sub"></div>
 
-          <!-- STAT PILLS — compact inline, replaces full stat bar band -->
-          <div class="stat-pills" id="stat-pills">
+          <div class="stat-pills" id="stat-pills" style="margin-left:4px">
             <div class="stat-pill loading" id="sp-total"><span class="stat-pill-num" id="sp-total-num">—</span><span>Total</span></div>
-            <div class="stat-pill" id="sp-good" style="color:var(--success)"><span class="stat-pill-num" id="sp-good-num">—</span><span>Good</span></div>
-            <div class="stat-pill" id="sp-attention" style="color:var(--danger)"><span class="stat-pill-num" id="sp-attention-num">—</span><span>Attn</span></div>
-            <div class="stat-pill" id="sp-due" style="color:var(--warn)"><span class="stat-pill-num" id="sp-due-num">—</span><span>Due</span></div>
+            <div class="stat-pill" style="color:var(--success)"><span class="stat-pill-num" id="sp-good-num">—</span></div>
+            <div class="stat-pill" style="color:var(--danger)"><span class="stat-pill-num" id="sp-attention-num">—</span></div>
+            <div class="stat-pill" style="color:var(--warn)"><span class="stat-pill-num" id="sp-due-num">—</span></div>
           </div>
 
-          <div class="floor-actions">
-            <!-- View toggle -->
-            <div class="view-toggle">
-              <button class="view-btn active" id="vbtn-map" onclick="setView('map')">📐 Map</button>
-              <button class="view-btn" id="vbtn-grid" onclick="setView('grid')">▦ Grid</button>
-            </div>
-            <div style="width:1px;height:28px;background:var(--mist);"></div>
-            <!-- Asset tools -->
-            <button class="btn-gold" id="add-asset-btn" style="display:none" onclick="startPlacing()">📍 Add Asset</button>
-            <button class="btn-ghost" id="cancel-place-btn" style="display:none" onclick="cancelPlacing()">✕ Cancel</button>
-            <button class="btn-ghost" id="start-audit-btn" style="display:none" onclick="startAudit()">📋 Audit</button>
-            <div style="width:1px;height:28px;background:var(--mist);"></div>
-            <!-- Filter & zoom -->
-            <button class="btn-ghost" id="tb-filter-btn" onclick="toggleFilterPanel()" style="padding:8px 12px;">⚙ Filter</button>
-            <button class="btn-ghost" id="tb-flags-btn" onclick="toggleFlagFilter()" style="padding:8px 12px;">🚩 Flags</button>
-            <div style="width:1px;height:28px;background:var(--mist);"></div>
-            <button class="btn-ghost" id="tb-zoom-btn" onclick="toggleDragZoom()" style="padding:8px 12px;">🔍 Zoom</button>
-            <button class="btn-ghost" onclick="stepZoom(-0.25)" style="padding:8px 12px; font-size:16px; font-weight:bold;">−</button>
-            <span id="zoom-level-display" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mid);min-width:36px;text-align:center;">100%</span>
-            <button class="btn-ghost" onclick="stepZoom(0.25)" style="padding:8px 12px; font-size:16px; font-weight:bold;">+</button>
-            <button class="btn-ghost" onclick="resetZoom()" style="padding:8px 12px;">⊙</button>
+          <div style="flex:1;min-width:6px"></div>
+
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-map" onclick="setView('map')">Map</button>
+            <button class="view-btn" id="vbtn-grid" onclick="setView('grid')">Grid</button>
+          </div>
+
+          <div class="tb-sep"></div>
+
+          <button class="btn-gold" id="add-asset-btn" style="display:none" onclick="startPlacing()">📍 Add</button>
+          <button class="btn-ghost" id="cancel-place-btn" style="display:none" onclick="cancelPlacing()">✕</button>
+          <button class="btn-ghost" id="start-audit-btn" style="display:none" onclick="startAudit()">📋 Audit</button>
+
+          <div class="tb-sep"></div>
+
+          <button class="btn-ghost" id="tb-filter-btn" onclick="toggleFilterPanel()">⚙ Filter</button>
+          <button class="btn-ghost" id="tb-flags-btn" onclick="toggleFlagFilter()">🚩 Flags</button>
+
+          <div class="tb-sep"></div>
+
+          <div class="zoom-group">
+            <button class="zoom-btn" id="tb-zoom-btn" onclick="toggleDragZoom()" title="Drag to zoom">🔍</button>
+            <div class="zoom-sep"></div>
+            <button class="zoom-btn" onclick="stepZoom(-0.25)">−</button>
+            <span class="zoom-lbl" id="zoom-level-display">100%</span>
+            <button class="zoom-btn" onclick="stepZoom(0.25)">+</button>
+            <div class="zoom-sep"></div>
+            <button class="zoom-btn" onclick="resetZoom()" style="font-size:11px">⊙</button>
           </div>
         </div>
-        <!-- NO stat-bar band here — removed -->
 
         <!-- MAP VIEW -->
         <div id="map-view" class="floor-plan-view" style="flex:1; position:relative;">
@@ -1118,6 +1179,43 @@ const SUPABASE_KEY = 'sb_publishable_Pax2PS7C-UQuyo74-ObmSQ_LCWN0GWa';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── TIER CONFIG ──
+const TIERS = {
+  free:        { label:'Free',        buildings:1, floors:3,    assets:15,  audit:false, flags:false, history:false, reorder:false },
+  building:    { label:'Building',    buildings:1, floors:9999, assets:9999, audit:false, flags:true,  history:false, reorder:true  },
+  portfolio:   { label:'Portfolio',   buildings:5, floors:9999, assets:9999, audit:true,  flags:true,  history:true,  reorder:true  },
+  enterprise:  { label:'Enterprise',  buildings:9999,floors:9999,assets:9999,audit:true,  flags:true,  history:true,  reorder:true  }
+};
+let orgTier = 'free';
+function getTier() { return TIERS[orgTier] || TIERS.free; }
+function tierCan(feature) { const v = getTier()[feature]; return v === true || (typeof v === 'number' && v >= 9999); }
+function showUpgradePrompt(reason) { toast('🔒 ' + reason + '. Contact us to upgrade.', 'error'); }
+function showUpgradeInfo() { toast('Contact randy@officemark.ca to upgrade your plan', 'success'); }
+
+// ── FOCUS MODE ──
+let focusModeActive = false;
+function toggleFocusMode() { focusModeActive ? exitFocusMode() : enterFocusMode(); }
+function enterFocusMode() {
+  focusModeActive = true;
+  document.getElementById('app-layout').classList.add('focus-mode');
+  document.getElementById('focus-btn').classList.add('active');
+  document.getElementById('focus-bar').classList.add('show');
+  document.getElementById('focus-bar-floor').textContent = document.getElementById('fl-title').textContent;
+  syncFocusStats();
+  toast('Focus mode · Esc to exit', 'success');
+}
+function exitFocusMode() {
+  focusModeActive = false;
+  document.getElementById('app-layout').classList.remove('focus-mode');
+  document.getElementById('focus-btn').classList.remove('active');
+  document.getElementById('focus-bar').classList.remove('show');
+}
+function syncFocusStats() {
+  const src = document.getElementById('stat-pills');
+  const dst = document.getElementById('focus-stat-pills');
+  if (src && dst) dst.innerHTML = src.innerHTML;
+}
+
 // ── STATE ──
 let user = null, profile = null;
 let currentBuilding = null, currentFloor = null;
@@ -1144,6 +1242,21 @@ async function onSignedIn(u) {
   profile = p;
   document.getElementById('hdr-email').textContent = u.email;
   document.getElementById('hdr-role').textContent = profile?.role || 'user';
+
+  // Load org tier
+  if (profile?.org_id) {
+    const { data: org } = await sb.from('organizations').select('tier').eq('id', profile.org_id).single();
+    orgTier = org?.tier || 'free';
+  } else if (profile?.role === 'superadmin') {
+    orgTier = 'enterprise';
+  }
+  const tierEl = document.getElementById('hdr-tier');
+  if (tierEl) {
+    tierEl.textContent = getTier().label;
+    tierEl.className = 'tier-tag tier-' + orgTier;
+    tierEl.style.display = 'inline-block';
+  }
+
   const isAdmin = isAdminUser();
   if (isAdmin) {
     document.getElementById('admin-bar').style.display = 'flex';
@@ -1179,14 +1292,30 @@ async function loadBuildings() {
     el.innerHTML = '<div style="font-size:12px;color:var(--mid);padding:8px 4px;font-family:DM Mono,monospace">No buildings yet</div>';
     return;
   }
-  data.forEach(b => {
+  const tier = getTier();
+  data.forEach((b, idx) => {
+    const locked = idx >= tier.buildings && orgTier !== 'enterprise';
     const d = document.createElement('div');
     d.className = 'building-card';
     d.dataset.buildingId = b.id;
-    d.innerHTML = `<div class="building-name">${b.name}</div><div class="building-meta">${b.city||''} · ${b.floor_count||'?'} floors</div>`;
-    d.onclick = () => selectBuilding(b, d);
+    if (locked) {
+      d.style.opacity = '0.45';
+      d.style.cursor = 'not-allowed';
+      d.innerHTML = `<div class="building-name">${b.name} <span style="font-size:10px">🔒</span></div><div class="building-meta">${b.city||''} · Upgrade to access</div>`;
+      d.onclick = () => showUpgradePrompt('Additional buildings require a Portfolio plan');
+    } else {
+      d.innerHTML = `<div class="building-name">${b.name}</div><div class="building-meta">${b.city||''} · ${b.floor_count||'?'} floors</div>`;
+      d.onclick = () => selectBuilding(b, d);
+    }
     el.appendChild(d);
   });
+  const notice = document.getElementById('tier-building-notice');
+  if (notice) {
+    if (isAdminUser() && data.length >= tier.buildings && orgTier !== 'enterprise') {
+      notice.innerHTML = `${tier.buildings}-building limit on ${getTier().label} plan. <a onclick="showUpgradeInfo()">Upgrade →</a>`;
+      notice.style.display = 'block';
+    } else { notice.style.display = 'none'; }
+  }
   const lastBuildingId = localStorage.getItem('mv_building');
   const lastFloorId = localStorage.getItem('mv_floor');
   if (lastBuildingId) {
@@ -1226,18 +1355,30 @@ async function loadFloors(buildingId) {
     el.innerHTML = '<div style="font-size:11px;color:var(--mid);padding:8px 4px;font-family:DM Mono,monospace">No floors — click ⚙ to add</div>';
     return;
   }
-  data.forEach(f => {
+  const floorTier = getTier();
+  data.forEach((f, idx) => {
+    const locked = orgTier === 'free' && idx >= floorTier.floors;
     const d = document.createElement('div');
     d.className = 'floor-item';
     d.dataset.floorId = f.id;
-    d.innerHTML = `
-      <span class="floor-plan-dot ${f.floor_plan_url ? '' : 'missing'}"></span>
-      <span class="floor-label">${f.label}</span>
-      <span class="floor-asset-count" id="fac-${f.id}"></span>
-    `;
-    d.onclick = () => selectFloor(f, d);
+    if (locked) {
+      d.style.opacity = '0.4';
+      d.style.cursor = 'not-allowed';
+      d.innerHTML = `<span class="floor-plan-dot missing"></span><span class="floor-label">${f.label}</span><span style="font-size:10px;color:var(--mid)">🔒</span>`;
+      d.onclick = () => showUpgradePrompt('Free plan shows ' + floorTier.floors + ' floors. Upgrade for full access');
+    } else {
+      d.innerHTML = `<span class="floor-plan-dot ${f.floor_plan_url ? '' : 'missing'}"></span><span class="floor-label">${f.label}</span><span class="floor-asset-count" id="fac-${f.id}"></span>`;
+      d.onclick = () => selectFloor(f, d);
+    }
     el.appendChild(d);
   });
+  const floorNotice = document.getElementById('tier-floor-notice');
+  if (floorNotice) {
+    if (orgTier === 'free' && data.length > floorTier.floors) {
+      floorNotice.innerHTML = `Free plan: showing ${floorTier.floors} of ${data.length} floors. <a onclick="showUpgradeInfo()">Upgrade →</a>`;
+      floorNotice.style.display = 'block';
+    } else { floorNotice.style.display = 'none'; }
+  }
   loadFloorAssetCounts(buildingId);
 }
 
@@ -1298,7 +1439,7 @@ async function selectFloor(f, el) {
   if (planUrl) {
     document.getElementById('no-plan').style.display = 'none';
     document.getElementById('plan-wrap').style.display = 'block';
-    if (auditBtn) auditBtn.style.display = isAdmin ? 'block' : 'none';
+    if (auditBtn) auditBtn.style.display = (isAdmin && tierCan('audit')) ? 'block' : 'none';
     await displayFloorPlan(planUrl);
   } else {
     document.getElementById('no-plan').style.display = 'flex';
@@ -1359,6 +1500,8 @@ function renderPins() {
 // ── PLACE PIN ──
 function startPlacing() {
   if (!currentFloor?.floor_plan_url) { toast('Upload a floor plan first', 'error'); return; }
+  const tier = getTier();
+  if (allAssets.length >= tier.assets) { showUpgradePrompt(tier.assets + '-asset limit reached on ' + tier.label + ' plan'); return; }
   placing = true;
   document.getElementById('plan-canvas').style.cursor = 'crosshair';
   document.getElementById('plan-img').style.cursor = 'crosshair';
@@ -1846,6 +1989,7 @@ function renderStats() {
 
   const pill = document.getElementById('sp-total');
   if (pill) pill.classList.remove('loading');
+  if (focusModeActive) syncFocusStats();
 }
 
 // ── VIEW TOGGLE ──
@@ -2133,7 +2277,7 @@ function lightboxZoom(delta) {
   document.getElementById('lightbox-img').style.transform = `scale(${lbScale})`;
   document.getElementById('lightbox-zoom-label').textContent = Math.round(lbScale * 100) + '%';
 }
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (focusModeActive) exitFocusMode(); else closeLightbox(); } });
 
 // ── FLAG & FILTER HELPERS ──
 let currentFlag = 'none';
@@ -2370,6 +2514,7 @@ let auditEditingAssetId = null;
 let auditEditingLocationId = null;
 
 function startAudit() {
+  if (!tierCan('audit')) { showUpgradePrompt('Audit mode requires a Portfolio plan or higher'); return; }
   if (!currentFloor?.floor_plan_url) { toast('Upload a floor plan first', 'error'); return; }
   auditActive = true;
   auditedAssetIds = new Set();
