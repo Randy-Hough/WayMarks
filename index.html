@@ -547,10 +547,10 @@ input[type=file] { display:none; }
 
 /* ── FILTER PANEL ── */
 .filter-panel {
-  position: absolute; left: 60px; top: 50%; transform: translateY(-50%);
-  z-index: 29; background: var(--warm); border: 1px solid var(--mist);
+  position: absolute; right: 0; top: calc(100% + 8px);
+  z-index: 100; background: var(--warm); border: 1px solid var(--mist);
   border-radius: 6px; padding: 14px; box-shadow: var(--sh-lg);
-  width: 210px; display: none;
+  width: 220px; display: none;
 }
 .filter-panel.open { display: block; }
 .filter-panel-title {
@@ -712,20 +712,54 @@ input[type=file] { display:none; }
             <div class="floor-title" id="fl-title">Floor</div>
             <div class="floor-sub" id="fl-sub"></div>
           </div>
-          <div class="floor-actions">
+          <div class="floor-actions" style="gap:6px;flex-wrap:wrap;">
+            <!-- View toggle -->
             <div class="view-toggle">
-              <button class="view-btn active" id="vbtn-map" onclick="setView('map')">📐 Map</button>
-              <button class="view-btn" id="vbtn-grid" onclick="setView('grid')">▦ Grid</button>
+              <button class="view-btn active" id="vbtn-map" onclick="setView('map')" title="Map view">📐 Map</button>
+              <button class="view-btn" id="vbtn-grid" onclick="setView('grid')" title="Grid view">▦ Grid</button>
             </div>
-            <button class="btn-gold" id="add-asset-btn" style="display:none" onclick="startPlacing()">+ Add Asset</button>
-            <button class="btn-ghost" id="cancel-place-btn" style="display:none" onclick="cancelPlacing()">Cancel</button>
-            <button class="btn-ghost" id="start-audit-btn" style="display:none" onclick="startAudit()">🔍 Audit</button>
+            <div style="width:1px;height:28px;background:var(--mist);"></div>
+            <!-- Asset tools -->
+            <button class="btn-gold" id="add-asset-btn" style="display:none" onclick="startPlacing()" title="Drop a new pin on the floor plan">📍 Add Asset</button>
+            <button class="btn-ghost" id="cancel-place-btn" style="display:none" onclick="cancelPlacing()">✕ Cancel</button>
+            <button class="btn-ghost" id="start-audit-btn" style="display:none" onclick="startAudit()" title="Start floor audit">📋 Audit</button>
+            <div style="width:1px;height:28px;background:var(--mist);"></div>
+            <!-- Filter & zoom -->
+            <button class="btn-ghost" id="tb-filter-btn" onclick="toggleFilterPanel()" title="Filter pins by type" style="padding:8px 12px;">⚙ Filter</button>
+            <button class="btn-ghost" id="tb-flags-btn" onclick="toggleFlagFilter()" title="Show flagged assets only" style="padding:8px 12px;">🚩 Flags</button>
+            <div style="width:1px;height:28px;background:var(--mist);"></div>
+            <button class="btn-ghost" id="tb-zoom-btn" onclick="toggleDragZoom()" title="Drag to zoom — draw a box over area" style="padding:8px 12px;">🔍 Zoom</button>
+            <button class="btn-ghost" onclick="stepZoom(-0.25)" title="Zoom out" style="padding:8px 12px; font-size:16px; font-weight:bold;">−</button>
+            <span id="zoom-level-display" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--mid);min-width:36px;text-align:center;">100%</span>
+            <button class="btn-ghost" onclick="stepZoom(0.25)" title="Zoom in" style="padding:8px 12px; font-size:16px; font-weight:bold;">+</button>
+            <button class="btn-ghost" onclick="resetZoom()" title="Reset to full view" style="padding:8px 12px;">⊙</button>
           </div>
         </div>
 
         <div class="stat-bar" id="stat-bar"></div>
 
         <!-- MAP VIEW -->
+        <!-- Filter panel - positioned relative to map-view -->
+        <div class="filter-panel" id="filter-panel" style="position:absolute;right:12px;top:12px;z-index:100;">
+          <div class="filter-panel-title">Filter by Type</div>
+          <div style="font-size:9px;color:var(--mid);font-family:'DM Mono',monospace;margin-bottom:6px">SIGNAGE</div>
+          <label class="filter-check"><input type="checkbox" checked data-type="directory" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#3d6b8f"></span>Directory</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="tenant_id" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#6b4f8f"></span>Tenant ID</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="egress" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#8f4f3d"></span>Egress</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="stairwell" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#4f7a5a"></span>Stairwell</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="service_room" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#7a6b3d"></span>Service Room</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="other" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#5a5a6b"></span>Other</label>
+          <div style="font-size:9px;color:var(--mid);font-family:'DM Mono',monospace;margin:10px 0 6px">FACILITIES</div>
+          <label class="filter-check"><input type="checkbox" checked data-type="wayfinding" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#b8965a"></span>Wayfinding</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="tenant_products" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#2e7d6e"></span>Tenant Products</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="utility" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#546e8a"></span>Utility Room</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="emergency" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#c0392b"></span>Emergency</label>
+          <label class="filter-check"><input type="checkbox" checked data-type="evacuation" onchange="applyTypeFilter()"><span class="type-swatch" style="background:#e67e22"></span>Evacuation</label>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--mist);display:flex;gap:6px">
+            <button onclick="selectAllFilters(true)" style="flex:1;padding:5px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;border:1px solid var(--mist);border-radius:3px;background:white">All</button>
+            <button onclick="selectAllFilters(false)" style="flex:1;padding:5px;font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;border:1px solid var(--mist);border-radius:3px;background:white">None</button>
+          </div>
+        </div>
         <div id="map-view" class="floor-plan-view" style="flex:1; position:relative;">
 
           <!-- No floor plan yet -->
@@ -745,38 +779,8 @@ input[type=file] { display:none; }
           </div>
 
           <!-- Floor plan + pins -->
-          <div id="plan-wrap" style="display:none; position:relative; width:100%; height:100%; overflow:auto;">
-            <!-- The plan container holds canvas/img and pins -->
-            <div id="plan-container" style="position:relative; display:inline-block; min-width:100%;" onmousemove="handlePlanMouseMove(event)" onmouseleave="removeGhostPin()" onclick="handlePlanClick(event)">
-              <canvas id="plan-canvas" style="display:none; max-width:100%; height:auto; cursor:default;"></canvas>
-              <img id="plan-img" alt="Floor plan" style="display:none; max-width:100%; height:auto;">
-              <div id="pins-layer" style="position:absolute; inset:0; pointer-events:none; z-index:5; overflow:visible;"></div>
-            </div>
-
-            <!-- Overlays -->
             <!-- MAP TOOLBAR -->
-            <div class="map-toolbar" id="map-toolbar">
-              <button class="toolbar-btn" id="tb-add" onclick="startPlacing()" title="Add Asset">
-                📍<span class="toolbar-tooltip">Add Asset</span>
-              </button>
-              <button class="toolbar-btn" id="tb-audit" onclick="startAudit()" title="Audit Mode">
-                📋<span class="toolbar-tooltip">Audit Mode</span>
-              </button>
-              <div class="toolbar-divider"></div>
-              <button class="toolbar-btn" id="tb-filter" onclick="toggleFilterPanel()" title="Filter">
-                ⚙<span class="toolbar-tooltip">Filter by Type</span>
-              </button>
-              <button class="toolbar-btn" id="tb-flags" onclick="toggleFlagFilter()" title="Show Flagged">
-                🚩<span class="toolbar-tooltip">Show Flagged Only</span>
-              </button>
-              <div class="toolbar-divider"></div>
-              <button class="toolbar-btn" onclick="toggleDragZoom()" id="tb-zoom" title="Zoom">
-                🔍<span class="toolbar-tooltip">Drag to Zoom</span>
-              </button>
-              <button class="toolbar-btn" onclick="resetZoom()" title="Reset View">
-                ⊙<span class="toolbar-tooltip">Reset View</span>
-              </button>
-            </div>
+            
 
             <!-- FILTER PANEL -->
             <div class="filter-panel" id="filter-panel">
@@ -800,19 +804,26 @@ input[type=file] { display:none; }
               </div>
             </div>
 
+
+          <div id="plan-wrap" style="display:none; position:relative; width:100%; height:100%; overflow:auto;">
+            <!-- The plan container holds canvas/img and pins -->
+            <div id="plan-container" style="position:relative; display:inline-block; min-width:100%;" onmousemove="handlePlanMouseMove(event)" onmouseleave="removeGhostPin()" onclick="handlePlanClick(event)">
+              <canvas id="plan-canvas" style="display:none; max-width:100%; height:auto; cursor:default;" onclick="handlePlanClick(event)"></canvas>
+              <img id="plan-img" alt="Floor plan" style="display:none; max-width:100%; height:auto;" onclick="handlePlanClick(event)">
+              <div id="pins-layer" style="position:absolute; inset:0; pointer-events:none; z-index:5; overflow:visible;"></div>
+            </div>
+
+            <!-- Overlays -->
+
             <div class="place-hint" id="place-hint">Click anywhere on the floor plan to place a new asset pin</div>
             <div id="plan-loading" style="display:none; position:absolute; inset:0; background:rgba(240,237,230,0.9); align-items:center; justify-content:center; flex-direction:column; gap:12px;">
               <div class="spinner"></div>
               <div style="font-size:12px; font-family:'DM Mono',monospace; color:var(--mid)">Rendering floor plan...</div>
             </div>
 
-            <!-- Controls -->
-            <button id="magnifier-btn" onclick="toggleDragZoom()" title="Drag to zoom — draw a box over area to zoom in"
-              style="position:absolute; bottom:52px; right:12px; z-index:20; width:36px; height:36px; border-radius:4px; background:rgba(44,53,64,0.85); color:white; border:none; font-size:18px; cursor:pointer; backdrop-filter:blur(4px);">🔍</button>
-            <button onclick="resetZoom()" title="Reset zoom"
-              style="position:absolute; bottom:12px; right:12px; z-index:20; width:36px; height:36px; border-radius:4px; background:rgba(44,53,64,0.85); color:white; border:none; font-size:14px; cursor:pointer; backdrop-filter:blur(4px);">⊙</button>
+            <!-- Replace plan button only - small and out of the way -->
             <button id="replace-plan-btn" onclick="document.getElementById('plan-file-input').click()"
-              style="position:absolute; bottom:12px; left:12px; background:rgba(44,53,64,0.8); color:white; border:none; padding:6px 14px; border-radius:4px; font-size:11px; font-family:'DM Mono',monospace; cursor:pointer; backdrop-filter:blur(4px); z-index:10;">
+              style="position:absolute; bottom:12px; left:12px; background:rgba(44,53,64,0.7); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:10px; font-family:'DM Mono',monospace; cursor:pointer; z-index:10; opacity:0.6;">
               Replace Floor Plan
             </button>
           </div>
@@ -2113,7 +2124,7 @@ let currentZoomOffsetX = 0, currentZoomOffsetY = 0;
 
 function toggleDragZoom() {
   dragZoomActive = !dragZoomActive;
-  const btn = document.getElementById('magnifier-btn');
+  const btn = document.getElementById('tb-zoom-btn');
   if (btn) {
     btn.classList.toggle('active', dragZoomActive);
     btn.title = dragZoomActive ? 'Click to exit zoom mode' : 'Click to enter zoom mode - drag a box to zoom';
@@ -2139,7 +2150,7 @@ function resetZoom() {
   if (planWrap) { planWrap.scrollTop = 0; planWrap.scrollLeft = 0; }
   if (container) { container.style.transform = ''; }
   dragZoomActive = false;
-  const btn = document.getElementById('magnifier-btn');
+  const btn = document.getElementById('tb-zoom-btn');
   if (btn) btn.classList.remove('active');
 }
 
@@ -2223,7 +2234,7 @@ function initDragZoom() {
     // Exit zoom mode after zooming
     dragZoomActive = false;
     container.style.cursor = '';
-    const btn = document.getElementById('magnifier-btn');
+    const btn = document.getElementById('tb-zoom-btn');
     if (btn) btn.classList.remove('active');
 
     // Single click anywhere resets zoom
@@ -2290,15 +2301,17 @@ function updateTypeCategory() {
 // ── FILTER FUNCTIONS ──
 function toggleFilterPanel() {
   const panel = document.getElementById('filter-panel');
-  const btn = document.getElementById('tb-filter');
+  const btn = document.getElementById('tb-filter-btn');
   if (!panel) return;
   const isOpen = panel.classList.toggle('open');
   if (btn) btn.classList.toggle('active', isOpen);
+  if (btn && isOpen) btn.style.background = 'var(--steel)' && (btn.style.color = 'white');
+  if (btn && !isOpen) btn.style.background = '' && (btn.style.color = '');
 }
 
 function toggleFlagFilter() {
   flagFilterActive = !flagFilterActive;
-  const btn = document.getElementById('tb-flags');
+  const btn = document.getElementById('tb-flags-btn');
   if (btn) btn.classList.toggle('urgent-active', flagFilterActive);
   renderPins();
 }
@@ -2481,6 +2494,24 @@ function renderHistoryLog(entries) {
       <div class="history-text">${e.note||''}</div>
     </div>`;
   }).join('') + '</div>';
+}
+
+
+// ── STEP ZOOM (+/-) ──
+let currentMapScale = 1.0;
+
+function stepZoom(delta) {
+  currentMapScale = Math.max(0.25, Math.min(4.0, currentMapScale + delta));
+  applyMapScale();
+}
+
+function applyMapScale() {
+  const container = document.getElementById('plan-container');
+  if (!container) return;
+  container.style.transform = `scale(${currentMapScale})`;
+  container.style.transformOrigin = 'top left';
+  const display = document.getElementById('zoom-level-display');
+  if (display) display.textContent = Math.round(currentMapScale * 100) + '%';
 }
 
 init();
