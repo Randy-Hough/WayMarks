@@ -747,7 +747,7 @@ input[type=file] { display:none; }
           <!-- Floor plan + pins -->
           <div id="plan-wrap" style="display:none; position:relative; width:100%; height:100%; overflow:auto;">
             <!-- The plan container holds canvas/img and pins -->
-            <div id="plan-container" style="position:relative; display:inline-block; min-width:100%;" onmousemove="handlePlanMouseMove(event)" onmouseleave="removeGhostPin()">
+            <div id="plan-container" style="position:relative; display:inline-block; min-width:100%;" onmousemove="handlePlanMouseMove(event)" onmouseleave="removeGhostPin()" onclick="handlePlanClick(event)">
               <canvas id="plan-canvas" style="display:none; max-width:100%; height:auto; cursor:default;"></canvas>
               <img id="plan-img" alt="Floor plan" style="display:none; max-width:100%; height:auto;">
               <div id="pins-layer" style="position:absolute; inset:0; pointer-events:none; z-index:5; overflow:visible;"></div>
@@ -1566,14 +1566,8 @@ function getPlanElement() {
 
 // Attach plan click listener once
 function attachPlanClickListener() {
-  const container = document.getElementById('plan-container');
-  if (!container || container._clickAttached) return;
-  container._clickAttached = true;
-  container.addEventListener('click', (e) => {
-    // Ignore clicks on pins
-    if (e.target.closest('.pin')) return;
-    handlePlanClick(e);
-  });
+  // onclick attribute on plan-container handles this directly
+  // This function kept for compatibility
 }
 
 // ── FLOOR PLAN UPLOAD ──
