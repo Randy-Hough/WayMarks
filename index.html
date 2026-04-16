@@ -2014,7 +2014,7 @@ async function saveBuilding() {
 }
 
 // ── FLOOR MODAL ──
-async function openFloorModal() {
+async async function openFloorModal() {
   document.getElementById('fm-title').textContent = `Floors — ${currentBuilding.name}`;
   await renderFloorMgmtList();
   openModal('floor-modal');
@@ -2386,6 +2386,18 @@ function toggleFilterPanel() {
   if (btn && isOpen) btn.style.background = 'var(--steel)' && (btn.style.color = 'white');
   if (btn && !isOpen) btn.style.background = '' && (btn.style.color = '');
 }
+
+// Close filter panel when clicking anywhere outside it
+document.addEventListener('click', e => {
+  const panel = document.getElementById('filter-panel');
+  const btn = document.getElementById('tb-filter-btn');
+  if (panel && panel.classList.contains('open')) {
+    if (!panel.contains(e.target) && !btn?.contains(e.target)) {
+      panel.classList.remove('open');
+      if (btn) { btn.classList.remove('active'); btn.style.background = ''; btn.style.color = ''; }
+    }
+  }
+});
 
 function toggleFlagFilter() {
   flagFilterActive = !flagFilterActive;
