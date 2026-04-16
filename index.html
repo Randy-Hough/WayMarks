@@ -2014,7 +2014,7 @@ async function saveBuilding() {
 }
 
 // ── FLOOR MODAL ──
-async async function openFloorModal() {
+async function openFloorModal() {
   document.getElementById('fm-title').textContent = `Floors — ${currentBuilding.name}`;
   await renderFloorMgmtList();
   openModal('floor-modal');
